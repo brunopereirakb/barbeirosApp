@@ -1,13 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
+import { THEME_STORAGE_KEY } from "./theme-init";
 
 export type Theme = "light" | "dark" | "system";
 
-const STORAGE_KEY = "theme";
-
 export function getStoredTheme(): Theme {
   if (typeof window === "undefined") return "system";
-  const v = window.localStorage.getItem(STORAGE_KEY);
+  const v = window.localStorage.getItem(THEME_STORAGE_KEY);
   if (v === "light" || v === "dark") return v;
   return "system";
 }
@@ -31,7 +30,6 @@ export function useTheme() {
     setThemeState(getStoredTheme());
   }, []);
 
-  // Re-apply when the OS preference changes while "system" is selected
   useEffect(() => {
     if (theme !== "system") return;
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
@@ -42,23 +40,10 @@ export function useTheme() {
 
   function setTheme(t: Theme) {
     setThemeState(t);
-    if (t === "system") window.localStorage.removeItem(STORAGE_KEY);
-    else window.localStorage.setItem(STORAGE_KEY, t);
+    if (t === "system") window.localStorage.removeItem(THEME_STORAGE_KEY);
+    else window.localStorage.setItem(THEME_STORAGE_KEY, t);
     applyTheme(t);
   }
 
   return { theme, setTheme };
 }
-
-// Inline script body — runs synchronously in <head> before paint to avoid a
-// flash of the wrong theme. Plain string so we can pass it to dangerouslySet…
-export const THEME_INIT_SCRIPT = `
-(function(){
-  try {
-    var v = localStorage.getItem(${JSON.stringify(STORAGE_KEY)});
-    var sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    var dark = v === 'dark' || (v !== 'light' && sysDark);
-    if (dark) document.documentElement.classList.add('dark');
-  } catch(e){}
-})();
-`;

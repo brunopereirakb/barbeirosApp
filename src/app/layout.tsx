@@ -1,7 +1,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import { Providers } from "@/components/Providers";
-import { THEME_INIT_SCRIPT } from "@/lib/theme";
+import { THEME_INIT_SCRIPT } from "@/lib/theme-init";
 
 export const metadata: Metadata = {
   title: "Schedule Hairdresser",
