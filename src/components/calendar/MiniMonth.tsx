@@ -206,7 +206,7 @@ export function MiniMonth({
               key={d.toISOString()}
               onClick={() => onSelectDay(d)}
               className={cn(
-                "relative flex aspect-[1/1.1] min-h-[44px] flex-col items-stretch justify-between rounded-md border p-1 text-left transition",
+                "relative flex aspect-[1/1.1] min-h-[44px] flex-col items-stretch justify-between overflow-hidden rounded-md border p-1 text-left transition",
                 isSel
                   ? "border-brand-500 bg-brand-500 text-white"
                   : inMonth
@@ -266,7 +266,7 @@ export function MiniMonth({
               {inMonth && info.closed && (
                 <span
                   className={cn(
-                    "text-[9px] font-medium uppercase leading-none",
+                    "block w-full truncate text-[8px] font-medium uppercase leading-none sm:text-[9px]",
                     isSel ? "text-white/80" : "text-red-500/70"
                   )}
                 >

@@ -11,17 +11,19 @@ export async function GET(req: NextRequest) {
   await ensureClientCodes(tenantId);
 
   const url = new URL(req.url);
-  const q = url.searchParams.get("q");
-  const where = q
-    ? {
-        userId: tenantId,
-        OR: [
-          { name: { contains: q } },
-          { phone: { contains: q } },
-          { email: { contains: q } },
-        ],
-      }
-    : { userId: tenantId };
+  const q = url.searchParams.get("q")?.trim();
+
+  let where: object = { userId: tenantId };
+  if (q) {
+    const or: object[] = [
+      { name: { contains: q, mode: "insensitive" } },
+      { phone: { contains: q } },
+      { email: { contains: q, mode: "insensitive" } },
+    ];
+    // If the query is a pure integer, also match it exactly against the client code.
+    if (/^\d+$/.test(q)) or.push({ code: Number(q) });
+    where = { userId: tenantId, OR: or };
+  }
 
   const clients = await prisma.client.findMany({ where, orderBy: { name: "asc" } });
   return NextResponse.json(clients);

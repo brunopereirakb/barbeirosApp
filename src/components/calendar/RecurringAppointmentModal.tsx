@@ -5,7 +5,7 @@ import { Loader2, CalendarClock, Check, X, AlertTriangle, Ban, Clock } from "luc
 import { getDayHours } from "@/lib/schedule";
 import { timeStringToMinutes, isSameDay } from "@/lib/utils";
 
-type Client = { id: string; name: string };
+type Client = { id: string; code: number | null; name: string; phone: string | null };
 type Service = { id: string; name: string; durationMin: number; category: string | null };
 
 type ExistingAppt = {
@@ -343,9 +343,15 @@ export function RecurringAppointmentModal({ onClose, onCreated, defaultDate }: P
     }
   }
 
-  const filteredClients = clients.filter((c) =>
-    c.name.toLowerCase().includes(clientSearch.toLowerCase())
-  );
+  const filteredClients = clients.filter((c) => {
+    const q = clientSearch.trim();
+    if (!q) return true;
+    const lo = q.toLowerCase();
+    if (c.name.toLowerCase().includes(lo)) return true;
+    if (c.phone && c.phone.toLowerCase().includes(lo)) return true;
+    if (c.code != null && String(c.code).includes(q)) return true;
+    return false;
+  });
   const selectedClient = clients.find((c) => c.id === clientId);
 
   const inputCls =
@@ -378,11 +384,11 @@ export function RecurringAppointmentModal({ onClose, onCreated, defaultDate }: P
                 <input
                   value={clientSearch}
                   onChange={(e) => setClientSearch(e.target.value)}
-                  placeholder="Pesquisar cliente…"
+                  placeholder="Pesquisar por código, nome ou telefone…"
                   className={inputCls}
                 />
                 {clientSearch && (
-                  <div className="max-h-32 overflow-y-auto rounded-lg border border-ink-200 bg-card shadow-sm">
+                  <div className="max-h-40 overflow-y-auto rounded-lg border border-ink-200 bg-card shadow-sm">
                     {filteredClients.slice(0, 8).map((c) => (
                       <button
                         key={c.id}
@@ -390,9 +396,17 @@ export function RecurringAppointmentModal({ onClose, onCreated, defaultDate }: P
                           setClientId(c.id);
                           setClientSearch("");
                         }}
-                        className="flex w-full px-3 py-2 text-left text-sm text-ink-800 hover:bg-brand-50"
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink-800 hover:bg-brand-50"
                       >
-                        {c.name}
+                        <span className="w-10 shrink-0 font-mono text-xs text-ink-400">
+                          {c.code != null ? `#${c.code}` : ""}
+                        </span>
+                        <span className="text-ink-300">—</span>
+                        <span className="min-w-0 flex-1 truncate">{c.name}</span>
+                        <span className="text-ink-300">—</span>
+                        <span className="shrink-0 text-xs text-ink-500">
+                          {c.phone || "—"}
+                        </span>
                       </button>
                     ))}
                     {filteredClients.length === 0 && (

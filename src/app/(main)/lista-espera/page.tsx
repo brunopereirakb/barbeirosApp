@@ -27,7 +27,7 @@ type Offer = {
   };
 };
 
-type Client = { id: string; name: string; phone: string | null };
+type Client = { id: string; code: number | null; name: string; phone: string | null };
 type Service = { id: string; name: string; durationMin: number };
 
 export default function WaitlistPage() {
@@ -264,9 +264,16 @@ function NewWaitlistEntry({ onClose, onSaved }: { onClose: () => void; onSaved: 
           <label className="mb-1 block text-xs font-medium text-ink-600">Cliente</label>
           <select value={clientId} onChange={(e) => setClientId(e.target.value)} className="w-full rounded-md border border-ink-300 px-3 py-2 text-sm">
             <option value="">— escolher —</option>
-            {clients.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
+            {clients.map((c) => {
+              const label = [
+                c.code != null ? `#${c.code}` : null,
+                c.name,
+                c.phone || null,
+              ].filter(Boolean).join(" — ");
+              return (
+                <option key={c.id} value={c.id}>{label}</option>
+              );
+            })}
           </select>
         </div>
         <div>

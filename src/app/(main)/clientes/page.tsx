@@ -41,7 +41,7 @@ export default function ClientsPage() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Pesquisar por nome, telefone..."
+            placeholder="Pesquisar por código, nome ou telefone…"
             className="w-72 rounded-md border border-ink-300 py-1.5 pl-8 pr-3 text-sm"
           />
         </div>

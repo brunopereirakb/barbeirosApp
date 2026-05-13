@@ -42,9 +42,15 @@ export function NewAppointmentModal({
     ]);
   }, []);
 
-  const filteredClients = clients.filter((c) =>
-    c.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredClients = clients.filter((c) => {
+    const q = search.trim();
+    if (!q) return true;
+    const lo = q.toLowerCase();
+    if (c.name.toLowerCase().includes(lo)) return true;
+    if (c.phone && c.phone.toLowerCase().includes(lo)) return true;
+    if (c.code != null && String(c.code).includes(q)) return true;
+    return false;
+  });
 
   // Agrupar serviços por categoria
   const grouped = services.reduce<Record<string, Service[]>>((acc, s) => {
@@ -220,7 +226,7 @@ export function NewAppointmentModal({
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Pesquisar cliente existente…"
+                placeholder="Pesquisar por código, nome ou telefone…"
                 className="mb-1.5 w-full rounded-md border border-ink-300 px-3 py-2 text-sm"
               />
               <div className="max-h-32 overflow-y-auto rounded-md border border-ink-200">
@@ -232,13 +238,15 @@ export function NewAppointmentModal({
                       clientId === c.id ? "bg-brand-50 font-medium text-brand-700" : ""
                     }`}
                   >
-                    {c.code != null && (
-                      <span className="font-mono text-[11px] text-ink-400">#{c.code}</span>
-                    )}
-                    <span>{c.name}</span>
-                    {c.phone && (
-                      <span className="ml-auto text-xs text-ink-400">{c.phone}</span>
-                    )}
+                    <span className="w-10 shrink-0 font-mono text-xs text-ink-400">
+                      {c.code != null ? `#${c.code}` : ""}
+                    </span>
+                    <span className="text-ink-300">—</span>
+                    <span className="min-w-0 flex-1 truncate">{c.name}</span>
+                    <span className="text-ink-300">—</span>
+                    <span className="shrink-0 text-xs text-ink-500">
+                      {c.phone || "—"}
+                    </span>
                   </button>
                 ))}
                 {filteredClients.length === 0 && (
