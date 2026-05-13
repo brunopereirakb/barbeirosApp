@@ -1,9 +1,10 @@
 "use client";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
-import { LogOut, ChevronDown, Menu } from "lucide-react";
+import { LogOut, ChevronDown, Menu, Sun, Moon, Monitor } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useSidebar } from "./SidebarContext";
+import { useTheme, type Theme } from "@/lib/theme";
 
 const PAGE_TITLES: Record<string, string> = {
   "/calendario": "Calendário",
@@ -51,7 +52,7 @@ export function Topbar() {
   const name = session?.user?.name ?? "";
 
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between border-b border-ink-200 bg-white px-4 sm:px-6">
+    <header className="flex h-14 shrink-0 items-center justify-between border-b border-ink-200 bg-card px-4 sm:px-6">
       <div className="flex items-center gap-3">
         {/* Hamburger — mobile only */}
         <button
@@ -64,35 +65,94 @@ export function Topbar() {
         <h1 className="text-sm font-semibold text-ink-900">{getTitle(pathname)}</h1>
       </div>
 
-      {/* User dropdown */}
-      <div className="relative" ref={ref}>
-        <button
-          onClick={() => setOpen((v) => !v)}
-          className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-ink-700 transition hover:bg-ink-100"
-        >
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-500 text-xs font-semibold text-white">
-            {initials(name)}
-          </div>
-          <span className="hidden sm:block max-w-[140px] truncate">{name}</span>
-          <ChevronDown size={14} className="text-ink-400" />
-        </button>
+      <div className="flex items-center gap-1">
+        <ThemeToggle />
 
-        {open && (
-          <div className="absolute right-0 top-full z-50 mt-1 w-48 rounded-xl border border-ink-200 bg-white py-1 shadow-lg">
-            <div className="border-b border-ink-100 px-3 py-2">
-              <p className="truncate text-xs font-medium text-ink-800">{name}</p>
-              <p className="truncate text-xs text-ink-400">{session?.user?.email}</p>
+        {/* User dropdown */}
+        <div className="relative" ref={ref}>
+          <button
+            onClick={() => setOpen((v) => !v)}
+            className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-ink-700 transition hover:bg-ink-100"
+          >
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-500 text-xs font-semibold text-white">
+              {initials(name)}
             </div>
-            <button
-              onClick={handleLogout}
-              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-            >
-              <LogOut size={15} />
-              Terminar sessão
-            </button>
-          </div>
-        )}
+            <span className="hidden sm:block max-w-[140px] truncate">{name}</span>
+            <ChevronDown size={14} className="text-ink-400" />
+          </button>
+
+          {open && (
+            <div className="absolute right-0 top-full z-50 mt-1 w-48 rounded-xl border border-ink-200 bg-card py-1 shadow-lg">
+              <div className="border-b border-ink-100 px-3 py-2">
+                <p className="truncate text-xs font-medium text-ink-800">{name}</p>
+                <p className="truncate text-xs text-ink-400">{session?.user?.email}</p>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50"
+              >
+                <LogOut size={15} />
+                Terminar sessão
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
+  );
+}
+
+function ThemeToggle() {
+  const { theme, setTheme } = useTheme();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const items: { value: Theme; label: string; Icon: typeof Sun }[] = [
+    { value: "light", label: "Claro", Icon: Sun },
+    { value: "dark", label: "Escuro", Icon: Moon },
+    { value: "system", label: "Sistema", Icon: Monitor },
+  ];
+  const Current = items.find((i) => i.value === theme)?.Icon ?? Monitor;
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-500 transition hover:bg-ink-100"
+        aria-label="Tema"
+        title="Tema"
+      >
+        <Current size={18} />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full z-50 mt-1 w-36 overflow-hidden rounded-xl border border-ink-200 bg-card py-1 shadow-lg">
+          {items.map(({ value, label, Icon }) => (
+            <button
+              key={value}
+              onClick={() => {
+                setTheme(value);
+                setOpen(false);
+              }}
+              className={`flex w-full items-center gap-2 px-3 py-2 text-sm transition ${
+                theme === value
+                  ? "bg-brand-50 text-brand-700"
+                  : "text-ink-700 hover:bg-ink-100"
+              }`}
+            >
+              <Icon size={15} />
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

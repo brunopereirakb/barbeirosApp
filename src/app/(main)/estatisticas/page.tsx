@@ -58,7 +58,7 @@ export default function StatsPage() {
 
   return (
     <div className="h-full">
-      <div className="flex items-center gap-3 border-b border-ink-200 bg-white px-5 py-3">
+      <div className="flex items-center gap-3 border-b border-ink-200 bg-card px-5 py-3">
         <h1 className="text-lg font-medium text-ink-900">Estatísticas</h1>
       </div>
 
@@ -79,7 +79,7 @@ export default function StatsPage() {
                 <h2 className="mb-2 text-sm font-medium text-ink-700">Próximos aniversários (30 dias)</h2>
                 <div className="space-y-1.5">
                   {stats.upcomingBirthdays.map((b) => (
-                    <div key={b.id} className="flex items-center justify-between rounded-md border border-ink-200 bg-white px-3 py-2">
+                    <div key={b.id} className="flex items-center justify-between rounded-md border border-ink-200 bg-card px-3 py-2">
                       <span className="text-sm text-ink-800">{b.name}</span>
                       <span className="text-xs text-ink-500">{b.date}</span>
                     </div>
@@ -101,7 +101,7 @@ export default function StatsPage() {
 
 function BigStat({ icon: Icon, value, label }: { icon: React.ElementType; value: number | string; label: string }) {
   return (
-    <div className="rounded-lg border border-ink-200 bg-white p-4">
+    <div className="rounded-lg border border-ink-200 bg-card p-4">
       <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-md bg-brand-50 text-brand-700">
         <Icon size={18} />
       </div>

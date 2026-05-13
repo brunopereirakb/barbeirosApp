@@ -48,6 +48,8 @@ model Client {
   id              String          @id @default(cuid())
   userId          String
   user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Short human-friendly identifier, unique per tenant (1, 2, 3, …). Backfilled lazily.
+  code            Int?
   name            String
   phone           String?
   email           String?
@@ -59,6 +61,7 @@ model Client {
   appointments    Appointment[]
   waitlistEntries WaitlistEntry[]
 
+  @@unique([userId, code])
   @@index([userId])
 }
 

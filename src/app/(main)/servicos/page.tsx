@@ -43,7 +43,7 @@ export default function ServicesPage() {
 
   return (
     <div className="h-full">
-      <div className="flex items-center gap-3 border-b border-ink-200 bg-white px-5 py-3">
+      <div className="flex items-center gap-3 border-b border-ink-200 bg-card px-5 py-3">
         <h1 className="text-lg font-medium text-ink-900">Serviços</h1>
         <span className="text-xs text-ink-500">{services.length}</span>
         <div className="flex-1" />
@@ -63,7 +63,7 @@ export default function ServicesPage() {
                 {list.map((s) => (
                   <div
                     key={s.id}
-                    className="flex items-center justify-between rounded-lg border border-ink-200 bg-white p-3"
+                    className="flex items-center justify-between rounded-lg border border-ink-200 bg-card p-3"
                   >
                     <div onClick={() => setEditing(s)} className="cursor-pointer flex-1">
                       <div className="font-medium text-ink-900">{s.name}</div>

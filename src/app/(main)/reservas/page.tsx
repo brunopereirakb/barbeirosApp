@@ -76,7 +76,7 @@ export default function ReservasPage() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="border-b border-ink-200 bg-white px-5 py-3">
+      <div className="border-b border-ink-200 bg-card px-5 py-3">
         <h1 className="text-lg font-medium text-ink-900">Pesquisa de reservas</h1>
       </div>
 
@@ -135,7 +135,7 @@ export default function ReservasPage() {
         )}
 
         {!loading && searched && results.length === 0 && (
-          <div className="rounded-xl border border-dashed border-ink-300 bg-white p-10 text-center text-sm text-ink-400">
+          <div className="rounded-xl border border-dashed border-ink-300 bg-card p-10 text-center text-sm text-ink-400">
             Nenhuma reserva encontrada.
           </div>
         )}
@@ -144,7 +144,7 @@ export default function ReservasPage() {
           <div className="space-y-1">
             <p className="text-xs text-ink-400">{results.length} resultado{results.length !== 1 ? "s" : ""}</p>
             {results.map((appt) => (
-              <div key={appt.id} className="rounded-xl border border-ink-200 bg-white p-4 shadow-sm">
+              <div key={appt.id} className="rounded-xl border border-ink-200 bg-card p-4 shadow-sm">
                 <div className="flex items-start justify-between gap-4">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -176,7 +176,7 @@ export default function ReservasPage() {
         )}
 
         {!searched && (
-          <div className="rounded-xl border border-dashed border-ink-300 bg-white p-10 text-center text-sm text-ink-400">
+          <div className="rounded-xl border border-dashed border-ink-300 bg-card p-10 text-center text-sm text-ink-400">
             Use a pesquisa ou os filtros acima para encontrar reservas.
           </div>
         )}

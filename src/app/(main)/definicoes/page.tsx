@@ -86,7 +86,7 @@ export default function SettingsPage() {
 
   return (
     <div className="h-full">
-      <div className="flex items-center gap-3 border-b border-ink-200 bg-white px-5 py-3">
+      <div className="flex items-center gap-3 border-b border-ink-200 bg-card px-5 py-3">
         <h1 className="text-lg font-medium text-ink-900">Definições</h1>
         <div className="flex-1" />
         {saved && <span className="text-xs text-green-600">✓ Guardado</span>}
@@ -283,7 +283,7 @@ export default function SettingsPage() {
 
 function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-ink-200 bg-white p-4">
+    <div className="rounded-lg border border-ink-200 bg-card p-4">
       <h2 className="text-sm font-medium text-ink-800">{title}</h2>
       {hint && <p className="mb-3 mt-0.5 text-xs text-ink-500">{hint}</p>}
       {!hint && <div className="mb-3" />}

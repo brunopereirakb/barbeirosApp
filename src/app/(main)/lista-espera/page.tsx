@@ -97,7 +97,7 @@ export default function WaitlistPage() {
 
   return (
     <div className="h-full">
-      <div className="flex items-center gap-3 border-b border-ink-200 bg-white px-5 py-3">
+      <div className="flex items-center gap-3 border-b border-ink-200 bg-card px-5 py-3">
         <h1 className="text-lg font-medium text-ink-900">Lista de espera</h1>
         <span className="text-xs text-ink-500">{entries.length} {entries.length === 1 ? "cliente" : "clientes"}</span>
         <div className="flex-1" />
@@ -129,7 +129,7 @@ export default function WaitlistPage() {
                       {list.map((o, i) => (
                         <div
                           key={o.id}
-                          className={`flex items-center gap-3 rounded-md border bg-white p-2 ${
+                          className={`flex items-center gap-3 rounded-md border bg-card p-2 ${
                             o.status === "pending" ? "border-amber-400 ring-1 ring-amber-200" : "border-ink-200"
                           }`}
                         >
@@ -187,7 +187,7 @@ export default function WaitlistPage() {
         <section>
           <h2 className="mb-2 text-sm font-medium text-ink-700">Clientes em espera</h2>
           {entries.length === 0 ? (
-            <div className="rounded-md border border-ink-200 bg-white p-8 text-center text-sm text-ink-500">
+            <div className="rounded-md border border-ink-200 bg-card p-8 text-center text-sm text-ink-500">
               Lista de espera vazia.
             </div>
           ) : (
@@ -195,7 +195,7 @@ export default function WaitlistPage() {
               {entries.map((e) => {
                 const prefs = JSON.parse(e.preferences || "{}") as { notes?: string; weekdays?: string[]; timeOfDay?: string };
                 return (
-                  <div key={e.id} className="flex items-center gap-3 rounded-md border border-ink-200 bg-white p-3">
+                  <div key={e.id} className="flex items-center gap-3 rounded-md border border-ink-200 bg-card p-3">
                     <div className="flex-1">
                       <div className="text-sm font-medium text-ink-800">{e.client.name}</div>
                       <div className="mt-0.5 text-xs text-ink-500">

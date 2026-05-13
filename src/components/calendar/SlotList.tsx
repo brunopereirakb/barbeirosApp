@@ -19,7 +19,7 @@ type Appointment = {
   endsAt: string;
   status: "pending" | "confirmed" | "done" | "cancelled" | "no_show";
   notes: string | null;
-  client: { id: string; name: string; phone: string | null };
+  client: { id: string; code: number | null; name: string; phone: string | null };
   service: { id: string; name: string; durationMin: number };
 };
 
@@ -218,7 +218,7 @@ export function SlotList({
   }
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden bg-white">
+    <div className="flex flex-1 flex-col overflow-hidden bg-card">
       {/* Header */}
       <div className="flex shrink-0 items-baseline justify-between border-b border-ink-200 px-4 py-2.5">
         <div>
@@ -349,9 +349,11 @@ function SlotRow({
               <span className="truncate text-sm font-medium text-ink-900">
                 {a.client.name}
               </span>
-              <span className="font-mono text-[10px] uppercase text-ink-400">
-                #{a.client.id.slice(-6)}
-              </span>
+              {a.client.code != null && (
+                <span className="font-mono text-[11px] text-ink-500">
+                  #{a.client.code}
+                </span>
+              )}
               {a.status === "pending" && (
                 <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium uppercase text-amber-700">
                   pendente

@@ -2,12 +2,68 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Light mode (default) — CSS variables are RGB triplets so Tailwind's
+   `<alpha-value>` syntax works for things like bg-ink-50/40. */
 :root {
-  --background: 250 250 249;
-  --foreground: 27 26 24;
-  --muted: 244 244 242;
-  --muted-foreground: 110 108 102;
-  --border: 231 230 226;
+  color-scheme: light;
+
+  --brand-50: 232 247 241;
+  --brand-100: 209 239 227;
+  --brand-200: 168 223 199;
+  --brand-300: 126 206 171;
+  --brand-400: 79 183 138;
+  --brand-500: 29 158 117;
+  --brand-600: 15 110 86;
+  --brand-700: 8 80 65;
+  --brand-800: 6 56 46;
+  --brand-900: 4 35 29;
+
+  --ink-50: 250 250 249;
+  --ink-100: 244 244 242;
+  --ink-200: 231 230 226;
+  --ink-300: 213 211 205;
+  --ink-400: 160 158 151;
+  --ink-500: 110 108 102;
+  --ink-600: 74 73 68;
+  --ink-700: 47 46 43;
+  --ink-800: 27 26 24;
+  --ink-900: 15 14 13;
+
+  --card: 255 255 255;
+}
+
+/* Dark mode — ink scale is inverted so existing `text-ink-900` / `bg-ink-50`
+   classes flip automatically. Brand colors are tweaked: light brand-50/100
+   become darker tints (so hover backgrounds are subtle on dark surfaces),
+   while brand-500 stays the same recognizable green. */
+.dark {
+  color-scheme: dark;
+
+  --brand-50: 6 56 46;
+  --brand-100: 8 80 65;
+  --brand-200: 15 110 86;
+  --brand-300: 29 158 117;
+  --brand-400: 79 183 138;
+  --brand-500: 79 183 138;
+  --brand-600: 126 206 171;
+  --brand-700: 168 223 199;
+  --brand-800: 209 239 227;
+  --brand-900: 232 247 241;
+
+  --ink-50: 15 14 13;
+  --ink-100: 27 26 24;
+  --ink-200: 47 46 43;
+  --ink-300: 74 73 68;
+  --ink-400: 110 108 102;
+  --ink-500: 160 158 151;
+  --ink-600: 213 211 205;
+  --ink-700: 231 230 226;
+  --ink-800: 244 244 242;
+  --ink-900: 250 250 249;
+
+  /* Card sits a hair above ink-100 so hover:bg-ink-100 still produces a visible
+     dimming effect (mirrors how light-mode card is white and hover is ink-100). */
+  --card: 36 34 32;
 }
 
 * {
@@ -23,8 +79,8 @@ body {
 
 body {
   font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  background: rgb(var(--background));
-  color: rgb(var(--foreground));
+  background: rgb(var(--ink-50));
+  color: rgb(var(--ink-900));
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -33,9 +89,17 @@ button {
   font-family: inherit;
 }
 
-/* Sem outline horrível por defeito; mas mantém para acessibilidade */
 :focus-visible {
-  outline: 2px solid theme("colors.brand.500");
+  outline: 2px solid rgb(var(--brand-500));
   outline-offset: 2px;
   border-radius: 4px;
+}
+
+/* Mobile keyboard ergonomics: when a form field gains focus and the browser
+   scrolls it into view, leave breathing room top + bottom so the field never
+   ends up flush against the keyboard or modal header. */
+input,
+textarea,
+select {
+  scroll-margin-block: 6rem;
 }

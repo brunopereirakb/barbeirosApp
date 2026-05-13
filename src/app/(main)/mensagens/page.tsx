@@ -87,7 +87,7 @@ export default function MessagesPage() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="flex items-center gap-3 border-b border-ink-200 bg-white px-5 py-3">
+      <div className="flex items-center gap-3 border-b border-ink-200 bg-card px-5 py-3">
         <h1 className="text-lg font-medium text-ink-900">Mensagens</h1>
         <span className="text-xs text-ink-500">{messages.length} mensagens</span>
         <div className="flex-1" />
@@ -100,7 +100,7 @@ export default function MessagesPage() {
         {/* Quick actions */}
         <div className="grid grid-cols-2 gap-3">
           {/* Reminder resend */}
-          <div className="rounded-xl border border-ink-200 bg-white p-4 shadow-sm">
+          <div className="rounded-xl border border-ink-200 bg-card p-4 shadow-sm">
             <div className="mb-3 flex items-center gap-2">
               <Bell size={16} className="text-brand-500" />
               <p className="font-medium text-ink-800">Reenviar lembretes</p>
@@ -131,7 +131,7 @@ export default function MessagesPage() {
           </div>
 
           {/* Broadcast */}
-          <div className="rounded-xl border border-ink-200 bg-white shadow-sm">
+          <div className="rounded-xl border border-ink-200 bg-card shadow-sm">
             <button
               onClick={() => setShowBroadcast((v) => !v)}
               className="flex w-full items-center gap-2 p-4 text-left"
@@ -178,7 +178,7 @@ export default function MessagesPage() {
 
         {/* History */}
         {messages.length === 0 && !loading ? (
-          <div className="rounded-xl border border-dashed border-ink-300 bg-white p-8 text-center text-sm text-ink-400">
+          <div className="rounded-xl border border-dashed border-ink-300 bg-card p-8 text-center text-sm text-ink-400">
             Nenhuma mensagem ainda.
           </div>
         ) : (
@@ -186,7 +186,7 @@ export default function MessagesPage() {
             {messages.map((m) => {
               const ctx = m.context ? (() => { try { return JSON.parse(m.context!); } catch { return {}; } })() : {};
               return (
-                <div key={m.id} className="flex gap-3 rounded-xl border border-ink-200 bg-white p-4 shadow-sm">
+                <div key={m.id} className="flex gap-3 rounded-xl border border-ink-200 bg-card p-4 shadow-sm">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-green-50 text-green-600">
                     <MessageCircle size={16} />
                   </div>

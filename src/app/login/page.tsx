@@ -91,7 +91,7 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-ink-50">
-      <div className="w-full max-w-sm space-y-8 rounded-2xl bg-white p-8 shadow-sm border border-ink-200">
+      <div className="w-full max-w-sm space-y-8 rounded-2xl bg-card p-8 shadow-sm border border-ink-200">
         <div className="flex flex-col items-center gap-3">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-500 text-white">
             <Scissors size={28} />

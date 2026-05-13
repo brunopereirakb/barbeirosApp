@@ -143,7 +143,7 @@ export function PlanosTab() {
         </div>
 
         {showNewPlan && (
-          <form onSubmit={createPlan} className="mb-4 rounded-xl border border-ink-200 bg-white p-5 shadow-sm">
+          <form onSubmit={createPlan} className="mb-4 rounded-xl border border-ink-200 bg-card p-5 shadow-sm">
             <h3 className="mb-4 font-semibold text-ink-900">Novo plano</h3>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
@@ -178,7 +178,7 @@ export function PlanosTab() {
             const editing = editingPlan === plan.id;
             const draft = editing ? planDraft : plan;
             return (
-              <div key={plan.id} className="rounded-xl border border-ink-200 bg-white p-5 shadow-sm">
+              <div key={plan.id} className="rounded-xl border border-ink-200 bg-card p-5 shadow-sm">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 space-y-3">
                     {editing ? (
@@ -248,7 +248,7 @@ export function PlanosTab() {
             const editing = editingAddon === addon.id;
             const draft = editing ? addonDraft : addon;
             return (
-              <div key={addon.id} className={`rounded-xl border border-ink-200 bg-white p-4 shadow-sm ${!addon.active ? "opacity-60" : ""}`}>
+              <div key={addon.id} className={`rounded-xl border border-ink-200 bg-card p-4 shadow-sm ${!addon.active ? "opacity-60" : ""}`}>
                 <div className="flex items-start gap-3">
                   {editing ? (
                     <div className="grid flex-1 grid-cols-3 gap-3">

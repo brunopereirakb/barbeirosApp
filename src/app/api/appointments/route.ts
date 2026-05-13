@@ -31,11 +31,28 @@ export async function POST(req: NextRequest) {
   const { clientId, serviceId, startsAt, notes, status } = body;
 
   if (!clientId || !serviceId || !startsAt) {
-    return NextResponse.json({ error: "clientId, serviceId e startsAt são obrigatórios" }, { status: 400 });
+    return NextResponse.json(
+      { error: "clientId, serviceId e startsAt são obrigatórios" },
+      { status: 400 }
+    );
   }
 
-  const service = await prisma.service.findFirstOrThrow({ where: { id: serviceId, userId: tenantId } });
   const start = new Date(startsAt);
+  if (Number.isNaN(start.getTime())) {
+    return NextResponse.json({ error: "Data de início inválida" }, { status: 400 });
+  }
+
+  const [service, client] = await Promise.all([
+    prisma.service.findFirst({ where: { id: serviceId, userId: tenantId } }),
+    prisma.client.findFirst({ where: { id: clientId, userId: tenantId } }),
+  ]);
+  if (!service) {
+    return NextResponse.json({ error: "Serviço não encontrado" }, { status: 404 });
+  }
+  if (!client) {
+    return NextResponse.json({ error: "Cliente não encontrado" }, { status: 404 });
+  }
+
   const end = new Date(start.getTime() + service.durationMin * 60_000);
 
   const appointment = await prisma.appointment.create({

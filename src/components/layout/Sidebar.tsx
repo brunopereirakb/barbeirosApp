@@ -131,7 +131,7 @@ export function Sidebar() {
     <>
       {/* Desktop sidebar */}
       <aside className={cn(
-        "hidden md:flex flex-col shrink-0 border-r border-ink-200 bg-white transition-[width] duration-200 ease-in-out overflow-hidden",
+        "hidden md:flex flex-col shrink-0 border-r border-ink-200 bg-card transition-[width] duration-200 ease-in-out overflow-hidden",
         expanded ? "w-52" : "w-16"
       )}>
         <SidebarContent
@@ -152,7 +152,7 @@ export function Sidebar() {
             onClick={closeMobile}
           />
           {/* Drawer panel */}
-          <aside className="absolute left-0 top-0 h-full w-64 bg-white shadow-2xl">
+          <aside className="absolute left-0 top-0 h-full w-64 bg-card shadow-2xl">
             <div className="flex items-center justify-between border-b border-ink-100 px-4 py-3">
               <span className="text-sm font-semibold text-ink-900">Menu</span>
               <button

@@ -166,7 +166,7 @@ export function UtilizadoresTab({ users, addonDefs, onRefresh }: Props) {
       </div>
 
       {showCreate && (
-        <form onSubmit={handleCreate} className="rounded-xl border border-ink-200 bg-white p-5 shadow-sm">
+        <form onSubmit={handleCreate} className="rounded-xl border border-ink-200 bg-card p-5 shadow-sm">
           <h3 className="mb-4 font-semibold text-ink-900">Novo utilizador</h3>
           <div className="grid grid-cols-3 gap-3">
             <input placeholder="Nome do salão" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required className="rounded-lg border border-ink-300 px-3 py-2 text-sm outline-none focus:border-brand-500" />
@@ -184,14 +184,14 @@ export function UtilizadoresTab({ users, addonDefs, onRefresh }: Props) {
       )}
 
       {users.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-ink-300 bg-white p-10 text-center text-sm text-ink-400">Nenhum utilizador registado.</div>
+        <div className="rounded-xl border border-dashed border-ink-300 bg-card p-10 text-center text-sm text-ink-400">Nenhum utilizador registado.</div>
       ) : (
         <div className="space-y-2">
           {users.map((user) => {
             const open = expanded === user.id;
             const sub = user.subscription;
             return (
-              <div key={user.id} className={`rounded-xl border bg-white shadow-sm ${!user.active ? "opacity-60" : ""} border-ink-200`}>
+              <div key={user.id} className={`rounded-xl border bg-card shadow-sm ${!user.active ? "opacity-60" : ""} border-ink-200`}>
                 {/* Header row */}
                 <div className="flex items-center gap-3 px-5 py-4">
                   <div className="min-w-0 flex-1">

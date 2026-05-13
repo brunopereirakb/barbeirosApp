@@ -40,7 +40,7 @@ export default function AdminPage() {
   return (
     <div className="flex min-h-screen flex-col bg-ink-50">
       {/* Top bar */}
-      <header className="flex h-14 items-center justify-between border-b border-ink-200 bg-white px-6">
+      <header className="flex h-14 items-center justify-between border-b border-ink-200 bg-card px-6">
         <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500 text-white">
             <Scissors size={16} />
@@ -56,7 +56,7 @@ export default function AdminPage() {
       </header>
 
       {/* Tab nav */}
-      <nav className="border-b border-ink-200 bg-white px-6">
+      <nav className="border-b border-ink-200 bg-card px-6">
         <div className="flex gap-1">
           {TABS.map(({ id, label, icon: Icon }) => (
             <button

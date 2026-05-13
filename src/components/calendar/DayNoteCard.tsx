@@ -50,7 +50,7 @@ export function DayNoteCard({ date }: { date: Date }) {
   }, [text, loaded]);
 
   return (
-    <div className="rounded-lg border border-ink-200 bg-white p-2.5">
+    <div className="rounded-lg border border-ink-200 bg-card p-2.5">
       <div className="mb-1 flex items-center justify-between">
         <span className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-ink-500">
           <Pencil size={11} /> Notas do dia
@@ -63,7 +63,7 @@ export function DayNoteCard({ date }: { date: Date }) {
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder="Notas para este dia (ex. fechar mais cedo, formação, etc.)"
-        className="h-24 w-full resize-none rounded border border-ink-200 bg-white px-2 py-1.5 text-xs text-ink-800 outline-none transition focus:border-brand-400"
+        className="h-24 w-full resize-none rounded border border-ink-200 bg-card px-2 py-1.5 text-xs text-ink-800 outline-none transition focus:border-brand-400"
       />
     </div>
   );

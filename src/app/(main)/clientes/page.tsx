@@ -6,6 +6,7 @@ import { Plus, Search, Phone, Mail, Cake, MessageCircle } from "lucide-react";
 
 type Client = {
   id: string;
+  code: number | null;
   name: string;
   phone: string | null;
   email: string | null;
@@ -31,7 +32,7 @@ export default function ClientsPage() {
 
   return (
     <div className="h-full">
-      <div className="flex items-center gap-3 border-b border-ink-200 bg-white px-5 py-3">
+      <div className="flex items-center gap-3 border-b border-ink-200 bg-card px-5 py-3">
         <h1 className="text-lg font-medium text-ink-900">Clientes</h1>
         <span className="text-xs text-ink-500">{clients.length}</span>
         <div className="flex-1" />
@@ -55,9 +56,14 @@ export default function ClientsPage() {
             <button
               key={c.id}
               onClick={() => setEditing(c)}
-              className="rounded-lg border border-ink-200 bg-white p-3 text-left transition-colors hover:border-ink-300"
+              className="rounded-lg border border-ink-200 bg-card p-3 text-left transition-colors hover:border-ink-300"
             >
-              <div className="font-medium text-ink-900">{c.name}</div>
+              <div className="flex items-baseline gap-2">
+                {c.code != null && (
+                  <span className="font-mono text-xs text-ink-400">#{c.code}</span>
+                )}
+                <span className="font-medium text-ink-900">{c.name}</span>
+              </div>
               <div className="mt-1 space-y-0.5 text-xs text-ink-500">
                 {c.phone && (
                   <div className="flex items-center gap-1">

@@ -11,7 +11,7 @@ type Appointment = {
   endsAt: string;
   status: "pending" | "confirmed" | "done" | "cancelled" | "no_show";
   notes: string | null;
-  client: { id: string; name: string; phone: string | null };
+  client: { id: string; code: number | null; name: string; phone: string | null };
   service: { id: string; name: string; durationMin: number };
 };
 
@@ -150,7 +150,7 @@ export function AppointmentDetailModal({
                   {matches.map((m, i) => (
                     <label
                       key={m.id}
-                      className="flex cursor-pointer items-center gap-3 rounded-md border border-ink-200 bg-white p-3 hover:border-ink-300"
+                      className="flex cursor-pointer items-center gap-3 rounded-md border border-ink-200 bg-card p-3 hover:border-ink-300"
                     >
                       <input
                         type="checkbox"
@@ -212,7 +212,7 @@ export function AppointmentDetailModal({
           }
         />
         {appointment.notes && (
-          <div className="rounded-md border border-ink-200 bg-white p-3">
+          <div className="rounded-md border border-ink-200 bg-card p-3">
             <div className="mb-0.5 text-[11px] font-medium uppercase tracking-wider text-ink-400">Notas</div>
             <div className="text-sm text-ink-700">{appointment.notes}</div>
           </div>

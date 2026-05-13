@@ -1,34 +1,38 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
+  darkMode: "class",
   content: ["./src/**/*.{js,ts,jsx,tsx,mdx}"],
   theme: {
     extend: {
       colors: {
         brand: {
-          50: "#E8F7F1",
-          100: "#D1EFE3",
-          200: "#A8DFC7",
-          300: "#7ECEAB",
-          400: "#4FB78A",
-          500: "#1D9E75",
-          600: "#0F6E56",
-          700: "#085041",
-          800: "#06382E",
-          900: "#04231D",
+          50: "rgb(var(--brand-50) / <alpha-value>)",
+          100: "rgb(var(--brand-100) / <alpha-value>)",
+          200: "rgb(var(--brand-200) / <alpha-value>)",
+          300: "rgb(var(--brand-300) / <alpha-value>)",
+          400: "rgb(var(--brand-400) / <alpha-value>)",
+          500: "rgb(var(--brand-500) / <alpha-value>)",
+          600: "rgb(var(--brand-600) / <alpha-value>)",
+          700: "rgb(var(--brand-700) / <alpha-value>)",
+          800: "rgb(var(--brand-800) / <alpha-value>)",
+          900: "rgb(var(--brand-900) / <alpha-value>)",
         },
         ink: {
-          50: "#FAFAF9",
-          100: "#F4F4F2",
-          200: "#E7E6E2",
-          300: "#D5D3CD",
-          400: "#A09E97",
-          500: "#6E6C66",
-          600: "#4A4944",
-          700: "#2F2E2B",
-          800: "#1B1A18",
-          900: "#0F0E0D",
+          50: "rgb(var(--ink-50) / <alpha-value>)",
+          100: "rgb(var(--ink-100) / <alpha-value>)",
+          200: "rgb(var(--ink-200) / <alpha-value>)",
+          300: "rgb(var(--ink-300) / <alpha-value>)",
+          400: "rgb(var(--ink-400) / <alpha-value>)",
+          500: "rgb(var(--ink-500) / <alpha-value>)",
+          600: "rgb(var(--ink-600) / <alpha-value>)",
+          700: "rgb(var(--ink-700) / <alpha-value>)",
+          800: "rgb(var(--ink-800) / <alpha-value>)",
+          900: "rgb(var(--ink-900) / <alpha-value>)",
         },
+        // `card` is white in light mode and a near-black surface in dark mode.
+        // Use this in place of `bg-white` for surfaces that should adapt.
+        card: "rgb(var(--card) / <alpha-value>)",
       },
       fontFamily: {
         sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],

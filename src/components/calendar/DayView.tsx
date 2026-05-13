@@ -15,7 +15,7 @@ type Appointment = {
   endsAt: string;
   status: "pending" | "confirmed" | "done" | "cancelled" | "no_show";
   notes: string | null;
-  client: { id: string; name: string; phone: string | null };
+  client: { id: string; code: number | null; name: string; phone: string | null };
   service: { id: string; name: string; durationMin: number };
 };
 
@@ -189,7 +189,7 @@ export function DayView() {
   return (
     <div className="flex h-full flex-col">
       {/* Toolbar */}
-      <div className="flex shrink-0 items-center gap-1.5 border-b border-ink-200 bg-white px-3 py-2 sm:gap-2 sm:px-4 sm:py-2.5 overflow-hidden">
+      <div className="flex shrink-0 items-center gap-1.5 border-b border-ink-200 bg-card px-3 py-2 sm:gap-2 sm:px-4 sm:py-2.5 overflow-hidden">
         {/* Prev */}
         <button
           onClick={() => setDate(view === "week" ? addDays(date, -7) : addDays(date, -1))}
@@ -197,7 +197,7 @@ export function DayView() {
         >
           <ChevronLeft size={18} />
         </button>
-        <button onClick={() => setDate(new Date())} className="rounded-full border border-ink-300 bg-white px-2.5 py-1 text-xs font-medium text-ink-700 hover:bg-ink-50">
+        <button onClick={() => setDate(new Date())} className="rounded-full border border-ink-300 bg-card px-2.5 py-1 text-xs font-medium text-ink-700 hover:bg-ink-50">
           Hoje
         </button>
         {/* Next */}
@@ -228,21 +228,21 @@ export function DayView() {
         <div className="flex rounded-lg border border-ink-200 overflow-hidden">
           <button
             onClick={() => setView("dashboard")}
-            className={cn("flex h-8 items-center gap-1 px-2.5 text-xs font-medium transition", view === "dashboard" ? "bg-brand-500 text-white" : "bg-white text-ink-600 hover:bg-ink-50")}
+            className={cn("flex h-8 items-center gap-1 px-2.5 text-xs font-medium transition", view === "dashboard" ? "bg-brand-500 text-white" : "bg-card text-ink-600 hover:bg-ink-50")}
           >
             <LayoutDashboard size={13} />
             <span className="hidden sm:inline">Painel</span>
           </button>
           <button
             onClick={() => setView("day")}
-            className={cn("flex h-8 items-center gap-1 border-l border-ink-200 px-2.5 text-xs font-medium transition", view === "day" ? "bg-brand-500 text-white" : "bg-white text-ink-600 hover:bg-ink-50")}
+            className={cn("flex h-8 items-center gap-1 border-l border-ink-200 px-2.5 text-xs font-medium transition", view === "day" ? "bg-brand-500 text-white" : "bg-card text-ink-600 hover:bg-ink-50")}
           >
             <Calendar size={13} />
             <span className="hidden sm:inline">Dia</span>
           </button>
           <button
             onClick={() => setView("week")}
-            className={cn("flex h-8 items-center gap-1 border-l border-ink-200 px-2.5 text-xs font-medium transition", view === "week" ? "bg-brand-500 text-white" : "bg-white text-ink-600 hover:bg-ink-50")}
+            className={cn("flex h-8 items-center gap-1 border-l border-ink-200 px-2.5 text-xs font-medium transition", view === "week" ? "bg-brand-500 text-white" : "bg-card text-ink-600 hover:bg-ink-50")}
           >
             <CalendarClock size={13} />
             <span className="hidden sm:inline">Semana</span>
@@ -438,7 +438,7 @@ export function DayView() {
             {showNowLine && nowTop >= 0 && nowTop <= (totalMin * PIXELS_PER_HOUR) / 60 && (
               <>
                 <div
-                  className="absolute left-0 z-20 -translate-y-2 rounded bg-white px-1 text-[11px] font-medium text-red-600"
+                  className="absolute left-0 z-20 -translate-y-2 rounded bg-card px-1 text-[11px] font-medium text-red-600"
                   style={{ top: nowTop }}
                 >
                   {formatTime(now)}
@@ -457,7 +457,7 @@ export function DayView() {
         </div>
 
         {/* Painel direito — desktop only (mobile uses bottom sheet below) */}
-        <div className="hidden md:block overflow-y-auto border-l border-ink-200 bg-white p-3">
+        <div className="hidden md:block overflow-y-auto border-l border-ink-200 bg-card p-3">
           <div className="space-y-4">
             <section>
               <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-ink-400">
@@ -488,7 +488,7 @@ export function DayView() {
                       <a
                         href="/lista-espera"
                         key={w.id}
-                        className="block rounded-md border border-ink-200 bg-white p-2.5 hover:border-ink-300"
+                        className="block rounded-md border border-ink-200 bg-card p-2.5 hover:border-ink-300"
                       >
                         <div className="text-[13px] font-medium text-ink-800">{w.client.name}</div>
                         <div className="text-[11px] text-ink-500">
@@ -523,8 +523,8 @@ export function DayView() {
       {showPanel && (
         <>
           <div className="fixed inset-0 z-30 bg-black/30 md:hidden" onClick={() => setShowPanel(false)} />
-          <div className="fixed bottom-0 left-0 right-0 z-40 max-h-[65vh] overflow-y-auto rounded-t-2xl bg-white shadow-2xl md:hidden">
-            <div className="sticky top-0 flex items-center justify-between border-b border-ink-100 bg-white px-4 py-3">
+          <div className="fixed bottom-0 left-0 right-0 z-40 max-h-[65vh] overflow-y-auto rounded-t-2xl bg-card shadow-2xl md:hidden">
+            <div className="sticky top-0 flex items-center justify-between border-b border-ink-100 bg-card px-4 py-3">
               <span className="text-sm font-semibold text-ink-900">Resumo do dia</span>
               <button onClick={() => setShowPanel(false)} className="rounded-md p-1 text-ink-400 hover:bg-ink-100">
                 <X size={18} />
@@ -557,7 +557,7 @@ export function DayView() {
                     {waitlist.slice(0, 3).map((w) => {
                       const prefs = JSON.parse(w.preferences || "{}") as { notes?: string };
                       return (
-                        <a href="/lista-espera" key={w.id} onClick={() => setShowPanel(false)} className="block rounded-md border border-ink-200 bg-white p-2.5 hover:border-ink-300">
+                        <a href="/lista-espera" key={w.id} onClick={() => setShowPanel(false)} className="block rounded-md border border-ink-200 bg-card p-2.5 hover:border-ink-300">
                           <div className="text-[13px] font-medium text-ink-800">{w.client.name}</div>
                           <div className="text-[11px] text-ink-500">{w.service.name}{prefs.notes ? ` · ${prefs.notes}` : ""}</div>
                         </a>
@@ -625,7 +625,7 @@ const STATUS_COLORS_WEEK: Record<string, string> = {
   pending: "border-amber-300 bg-amber-50 text-amber-900",
   done: "border-ink-200 bg-ink-100 text-ink-500",
   no_show: "border-red-300 bg-red-50 text-red-800",
-  cancelled: "border-ink-100 bg-white text-ink-400 line-through",
+  cancelled: "border-ink-100 bg-card text-ink-400 line-through",
 };
 
 function WeekGrid({
@@ -670,7 +670,7 @@ function WeekGrid({
                 {/* Day header */}
                 <div className={cn(
                   "sticky top-0 z-10 flex flex-col items-center border-b px-2 py-2 text-center",
-                  isToday ? "border-brand-200 bg-brand-50" : "border-ink-200 bg-white"
+                  isToday ? "border-brand-200 bg-brand-50" : "border-ink-200 bg-card"
                 )}>
                   <span className="text-[10px] font-medium uppercase tracking-wide text-ink-400">
                     {day.toLocaleDateString("pt-PT", { weekday: "short" })}
@@ -744,7 +744,7 @@ function NewAppointmentDropdown({ onNew, onRecurring }: { onNew: () => void; onR
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-1 w-52 overflow-hidden rounded-xl border border-ink-200 bg-white shadow-lg">
+        <div className="absolute right-0 top-full z-50 mt-1 w-52 overflow-hidden rounded-xl border border-ink-200 bg-card shadow-lg">
           <button
             onClick={() => { setOpen(false); onNew(); }}
             className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm hover:bg-brand-50"
@@ -778,7 +778,7 @@ function NewAppointmentDropdown({ onNew, onRecurring }: { onNew: () => void; onR
 
 function Stat({ n, label }: { n: number | string; label: string }) {
   return (
-    <div className="rounded-md border border-ink-200 bg-white px-2.5 py-2">
+    <div className="rounded-md border border-ink-200 bg-card px-2.5 py-2">
       <div className="text-lg font-medium leading-none text-ink-900">{n}</div>
       <div className="mt-1 text-[11px] text-ink-500">{label}</div>
     </div>
@@ -789,7 +789,7 @@ function Card({ title, subtitle, onClick }: { title: string; subtitle: string; o
   return (
     <button
       onClick={onClick}
-      className="block w-full rounded-md border border-ink-200 bg-white p-2.5 text-left hover:border-ink-300"
+      className="block w-full rounded-md border border-ink-200 bg-card p-2.5 text-left hover:border-ink-300"
     >
       <div className="text-[13px] font-medium text-ink-800">{title}</div>
       <div className="text-[11px] text-ink-500">{subtitle}</div>

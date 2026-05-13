@@ -158,7 +158,7 @@ export function MiniMonth({
   }
 
   return (
-    <div className="rounded-lg border border-ink-200 bg-white p-3">
+    <div className="rounded-lg border border-ink-200 bg-card p-3">
       {/* Header */}
       <div className="mb-2 flex items-center justify-between">
         <button
@@ -210,7 +210,7 @@ export function MiniMonth({
                 isSel
                   ? "border-brand-500 bg-brand-500 text-white"
                   : inMonth
-                    ? "border-ink-100 bg-white text-ink-800 hover:border-brand-200 hover:bg-brand-50/40"
+                    ? "border-ink-100 bg-card text-ink-800 hover:border-brand-200 hover:bg-brand-50/40"
                     : "border-transparent bg-ink-50/40 text-ink-300",
                 !isSel && today && "ring-1 ring-brand-300"
               )}
@@ -230,7 +230,7 @@ export function MiniMonth({
                     className={cn(
                       "h-1.5 w-1.5 rounded-full",
                       isSel
-                        ? "bg-white/90"
+                        ? "bg-card/90"
                         : dot === "red"
                           ? "bg-red-500"
                           : dot === "yellow"
