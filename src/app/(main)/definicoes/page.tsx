@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Save } from "lucide-react";
 
+type Service = { id: string; name: string; durationMin: number };
+
 type Settings = {
   salonName: string;
   workdayStart: string;
@@ -12,15 +14,29 @@ type Settings = {
   cascadeWaitMinutes: number;
   reminderHoursBefore: number;
   whatsappMode: string;
+  defaultServiceByWeekday: Record<string, string>;
 };
+
+const WEEKDAY_NAMES = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+// Display Mon..Sun in the UI (matches Portuguese week order) but the data keys remain 0=Sun..6=Sat.
+const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
 export default function SettingsPage() {
   const [s, setS] = useState<Settings | null>(null);
+  const [services, setServices] = useState<Service[]>([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    void fetch("/api/settings").then((r) => r.json()).then(setS);
+    void fetch("/api/settings")
+      .then((r) => r.json())
+      .then((data: Settings) => {
+        setS({
+          ...data,
+          defaultServiceByWeekday: data.defaultServiceByWeekday ?? {},
+        });
+      });
+    void fetch("/api/services").then((r) => r.json()).then(setServices);
   }, []);
 
   async function save() {
@@ -104,6 +120,42 @@ export default function SettingsPage() {
                   className="input"
                 />
               </Field>
+            </div>
+          </Section>
+
+          <Section
+            title="Serviço padrão por dia da semana"
+            hint="Define o serviço habitual de cada dia. A duração desse serviço determina o tamanho dos slots no painel diário (ex.: corte de 15 min nos dias de semana, 10 min ao fim de semana)."
+          >
+            <div className="space-y-2">
+              {WEEKDAY_ORDER.map((dow) => {
+                const key = String(dow);
+                const value = s.defaultServiceByWeekday[key] ?? "";
+                return (
+                  <div key={dow} className="flex items-center gap-3">
+                    <span className="w-20 shrink-0 text-xs font-medium text-ink-700">
+                      {WEEKDAY_NAMES[dow]}
+                    </span>
+                    <select
+                      value={value}
+                      onChange={(e) => {
+                        const next = { ...s.defaultServiceByWeekday };
+                        if (e.target.value) next[key] = e.target.value;
+                        else delete next[key];
+                        setS({ ...s, defaultServiceByWeekday: next });
+                      }}
+                      className="input flex-1"
+                    >
+                      <option value="">— sem serviço padrão —</option>
+                      {services.map((sv) => (
+                        <option key={sv.id} value={sv.id}>
+                          {sv.name} ({sv.durationMin} min)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                );
+              })}
             </div>
           </Section>
 

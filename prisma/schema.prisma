@@ -25,6 +25,7 @@ model User {
   waitlist     WaitlistEntry[]
   cascadeOffers CascadeOffer[]
   messageLogs  MessageLog[]
+  dayNotes     DayNote[]
 }
 
 model Subscription {
@@ -147,15 +148,31 @@ model MessageLog {
 }
 
 model Settings {
-  userId              String  @id
-  user                User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  salonName           String  @default("O Meu Salão")
-  workdayStart        String  @default("09:00")
-  workdayEnd          String  @default("19:00")
-  lunchStart          String  @default("12:30")
-  lunchEnd            String  @default("14:00")
-  cascadeWaitMinutes  Int     @default(30)
-  reminderHoursBefore Int     @default(24)
+  userId                  String  @id
+  user                    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  salonName               String  @default("O Meu Salão")
+  workdayStart            String  @default("09:00")
+  workdayEnd              String  @default("19:00")
+  lunchStart              String  @default("12:30")
+  lunchEnd                String  @default("14:00")
+  cascadeWaitMinutes      Int     @default(30)
+  reminderHoursBefore     Int     @default(24)
+  // JSON: { "0": "serviceId", "1": "serviceId", ... } where 0=Sunday, 6=Saturday.
+  // Drives slot duration on the dashboard.
+  defaultServiceByWeekday String  @default("{}")
+}
+
+model DayNote {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      DateTime @db.Date
+  text      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId])
 }
 
 model PlanDefinition {
