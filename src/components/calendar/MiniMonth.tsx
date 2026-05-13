@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn, isSameDay, isToday, timeStringToMinutes } from "@/lib/utils";
+import { getDayHours } from "@/lib/schedule";
 
 type MiniAppt = {
   startsAt: string;
@@ -17,6 +18,7 @@ type Settings = {
   lunchStart: string;
   lunchEnd: string;
   defaultServiceByWeekday?: Record<string, string>;
+  workScheduleByWeekday?: Record<string, { closed?: boolean; start?: string; end?: string }>;
 };
 
 const WEEKDAYS_SHORT = ["S", "T", "Q", "Q", "S", "S", "D"];
@@ -59,13 +61,16 @@ function dayInfo(
   settings: Settings | null
 ): DayInfo {
   if (!settings) return { closed: true };
+  const hours = getDayHours(d, settings);
+  if (!hours.open) return { closed: true };
+
   const sid = settings.defaultServiceByWeekday?.[String(d.getDay())];
   const svc = sid ? services.find((s) => s.id === sid) : undefined;
   if (!svc) return { closed: true };
 
   const slotMin = svc.durationMin;
-  const dayStart = timeStringToMinutes(settings.workdayStart);
-  const dayEnd = timeStringToMinutes(settings.workdayEnd);
+  const dayStart = timeStringToMinutes(hours.start);
+  const dayEnd = timeStringToMinutes(hours.end);
   const lunchStart = timeStringToMinutes(settings.lunchStart);
   const lunchEnd = timeStringToMinutes(settings.lunchEnd);
 

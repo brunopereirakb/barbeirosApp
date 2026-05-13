@@ -5,6 +5,8 @@ import { Save } from "lucide-react";
 
 type Service = { id: string; name: string; durationMin: number };
 
+type WorkEntry = { closed: boolean; start: string; end: string };
+
 type Settings = {
   salonName: string;
   workdayStart: string;
@@ -15,11 +17,30 @@ type Settings = {
   reminderHoursBefore: number;
   whatsappMode: string;
   defaultServiceByWeekday: Record<string, string>;
+  workScheduleByWeekday: Record<string, WorkEntry>;
 };
 
 const WEEKDAY_NAMES = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 // Display Mon..Sun in the UI (matches Portuguese week order) but the data keys remain 0=Sun..6=Sat.
 const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
+
+function buildInitialSchedule(
+  raw: Record<string, { closed?: boolean; start?: string; end?: string }> | undefined,
+  globalStart: string,
+  globalEnd: string
+): Record<string, WorkEntry> {
+  const out: Record<string, WorkEntry> = {};
+  for (let i = 0; i < 7; i++) {
+    const key = String(i);
+    const e = raw?.[key];
+    out[key] = {
+      closed: !!e?.closed,
+      start: e?.start || globalStart,
+      end: e?.end || globalEnd,
+    };
+  }
+  return out;
+}
 
 export default function SettingsPage() {
   const [s, setS] = useState<Settings | null>(null);
@@ -30,10 +51,15 @@ export default function SettingsPage() {
   useEffect(() => {
     void fetch("/api/settings")
       .then((r) => r.json())
-      .then((data: Settings) => {
+      .then((data: Settings & { workScheduleByWeekday?: Record<string, { closed?: boolean; start?: string; end?: string }> }) => {
         setS({
           ...data,
           defaultServiceByWeekday: data.defaultServiceByWeekday ?? {},
+          workScheduleByWeekday: buildInitialSchedule(
+            data.workScheduleByWeekday,
+            data.workdayStart,
+            data.workdayEnd
+          ),
         });
       });
     void fetch("/api/services").then((r) => r.json()).then(setServices);
@@ -81,24 +107,61 @@ export default function SettingsPage() {
             </Field>
           </Section>
 
-          <Section title="Horário de trabalho">
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Abertura">
-                <input
-                  type="time"
-                  value={s.workdayStart}
-                  onChange={(e) => setS({ ...s, workdayStart: e.target.value })}
-                  className="input"
-                />
-              </Field>
-              <Field label="Encerramento">
-                <input
-                  type="time"
-                  value={s.workdayEnd}
-                  onChange={(e) => setS({ ...s, workdayEnd: e.target.value })}
-                  className="input"
-                />
-              </Field>
+          <Section
+            title="Horário e dias de trabalho"
+            hint="Define que dias estás aberto e a que horas. Os dias marcados como fechados aparecem a vermelho no calendário."
+          >
+            <div className="space-y-2">
+              {WEEKDAY_ORDER.map((dow) => {
+                const key = String(dow);
+                const entry = s.workScheduleByWeekday[key] ?? { closed: false, start: s.workdayStart, end: s.workdayEnd };
+                const isOpen = !entry.closed;
+                return (
+                  <div key={dow} className="flex flex-wrap items-center gap-3">
+                    <span className="w-20 shrink-0 text-xs font-medium text-ink-700">
+                      {WEEKDAY_NAMES[dow]}
+                    </span>
+                    <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-ink-700">
+                      <input
+                        type="checkbox"
+                        checked={isOpen}
+                        onChange={(e) => {
+                          const next = { ...s.workScheduleByWeekday };
+                          next[key] = { ...entry, closed: !e.target.checked };
+                          setS({ ...s, workScheduleByWeekday: next });
+                        }}
+                        className="h-4 w-4 rounded border-ink-300"
+                      />
+                      {isOpen ? "Aberto" : "Fechado"}
+                    </label>
+                    <div className="flex flex-1 items-center gap-2">
+                      <input
+                        type="time"
+                        value={entry.start}
+                        disabled={!isOpen}
+                        onChange={(e) => {
+                          const next = { ...s.workScheduleByWeekday };
+                          next[key] = { ...entry, start: e.target.value };
+                          setS({ ...s, workScheduleByWeekday: next });
+                        }}
+                        className="input flex-1 disabled:bg-ink-50 disabled:text-ink-400"
+                      />
+                      <span className="text-xs text-ink-400">–</span>
+                      <input
+                        type="time"
+                        value={entry.end}
+                        disabled={!isOpen}
+                        onChange={(e) => {
+                          const next = { ...s.workScheduleByWeekday };
+                          next[key] = { ...entry, end: e.target.value };
+                          setS({ ...s, workScheduleByWeekday: next });
+                        }}
+                        className="input flex-1 disabled:bg-ink-50 disabled:text-ink-400"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </Section>
 

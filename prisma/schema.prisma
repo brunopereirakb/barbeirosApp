@@ -160,6 +160,9 @@ model Settings {
   // JSON: { "0": "serviceId", "1": "serviceId", ... } where 0=Sunday, 6=Saturday.
   // Drives slot duration on the dashboard.
   defaultServiceByWeekday String  @default("{}")
+  // JSON: { "0": {"closed": true}, "1": {"start": "09:00", "end": "19:00"}, ... }.
+  // Missing key falls back to workdayStart/workdayEnd. 0=Sunday, 6=Saturday.
+  workScheduleByWeekday   String  @default("{}")
 }
 
 model DayNote {

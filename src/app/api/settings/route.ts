@@ -32,9 +32,17 @@ export async function GET() {
     defaultServiceByWeekday = {};
   }
 
+  let workScheduleByWeekday: Record<string, unknown> = {};
+  try {
+    workScheduleByWeekday = JSON.parse(settings.workScheduleByWeekday || "{}");
+  } catch {
+    workScheduleByWeekday = {};
+  }
+
   return NextResponse.json({
     ...settings,
     defaultServiceByWeekday,
+    workScheduleByWeekday,
     whatsappMode: process.env.WHATSAPP_MODE || "mock",
     subscription: subscription
       ? { plan: subscription.plan, addons: JSON.parse(subscription.addons) }
@@ -65,6 +73,12 @@ export async function PATCH(req: NextRequest) {
       typeof body.defaultServiceByWeekday === "string"
         ? body.defaultServiceByWeekday
         : JSON.stringify(body.defaultServiceByWeekday);
+  }
+  if (body.workScheduleByWeekday !== undefined) {
+    data.workScheduleByWeekday =
+      typeof body.workScheduleByWeekday === "string"
+        ? body.workScheduleByWeekday
+        : JSON.stringify(body.workScheduleByWeekday);
   }
 
   const updated = await prisma.settings.upsert({
