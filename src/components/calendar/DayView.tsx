@@ -1,10 +1,12 @@
 "use client";
 import { useState, useEffect, useMemo, useRef } from "react";
-import { ChevronLeft, ChevronRight, Plus, Search, Cake, MessageCircle, Clock, Check, Coffee, CalendarClock, BarChart3, X, Calendar } from "lucide-react";
-import { cn, formatTime, durationLabel, addDays, isSameDay, timeStringToMinutes, isToday } from "@/lib/utils";
+import { ChevronLeft, ChevronRight, Plus, Search, Cake, MessageCircle, Clock, Check, Coffee, CalendarClock, BarChart3, X, Calendar, List, CalendarDays } from "lucide-react";
+import { cn, formatTime, durationLabel, addDays, timeStringToMinutes, isToday } from "@/lib/utils";
 import { NewAppointmentModal } from "./NewAppointmentModal";
 import { AppointmentDetailModal } from "./AppointmentDetailModal";
 import { RecurringAppointmentModal } from "./RecurringAppointmentModal";
+import { MonthView } from "./MonthView";
+import { ListView } from "./ListView";
 
 type Appointment = {
   id: string;
@@ -34,7 +36,7 @@ type WaitlistEntry = {
 
 const PIXELS_PER_HOUR = 60; // 1 minuto = 1px
 
-type CalView = "day" | "week";
+type CalView = "month" | "list" | "day" | "week";
 
 function getMonday(d: Date): Date {
   const r = new Date(d);
@@ -53,7 +55,7 @@ function getWeekDays(monday: Date): Date[] {
 }
 
 export function DayView() {
-  const [view, setView] = useState<CalView>("day");
+  const [view, setView] = useState<CalView>("month");
   const [date, setDate] = useState<Date>(new Date());
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -92,6 +94,8 @@ export function DayView() {
         apptRes = await fetch(
           `/api/appointments/search?dateFrom=${monday.toISOString()}&dateTo=${sunday.toISOString()}&limit=500`
         ).then((r) => r.ok ? r.json() : []).catch(() => []);
+      } else if (view === "month") {
+        apptRes = [];
       } else {
         apptRes = await fetch(`/api/appointments?date=${date.toISOString()}`).then((r) => r.ok ? r.json() : []).catch(() => []);
       }
@@ -181,45 +185,63 @@ export function DayView() {
     <div className="flex h-full flex-col">
       {/* Toolbar */}
       <div className="flex shrink-0 items-center gap-1.5 border-b border-ink-200 bg-white px-3 py-2 sm:gap-2 sm:px-4 sm:py-2.5 overflow-hidden">
-        {/* Prev */}
-        <button
-          onClick={() => setDate(view === "week" ? addDays(date, -7) : addDays(date, -1))}
-          className="flex h-8 w-8 items-center justify-center rounded-md text-ink-600 hover:bg-ink-100"
-        >
-          <ChevronLeft size={18} />
-        </button>
-        <button onClick={() => setDate(new Date())} className="rounded-full border border-ink-300 bg-white px-2.5 py-1 text-xs font-medium text-ink-700 hover:bg-ink-50">
-          Hoje
-        </button>
-        {/* Next */}
-        <button
-          onClick={() => setDate(view === "week" ? addDays(date, 7) : addDays(date, 1))}
-          className="flex h-8 w-8 items-center justify-center rounded-md text-ink-600 hover:bg-ink-100"
-        >
-          <ChevronRight size={18} />
-        </button>
+        {view !== "month" && (
+          <>
+            {/* Prev */}
+            <button
+              onClick={() => setDate(view === "week" ? addDays(date, -7) : addDays(date, -1))}
+              className="flex h-8 w-8 items-center justify-center rounded-md text-ink-600 hover:bg-ink-100"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <button onClick={() => setDate(new Date())} className="rounded-full border border-ink-300 bg-white px-2.5 py-1 text-xs font-medium text-ink-700 hover:bg-ink-50">
+              Hoje
+            </button>
+            {/* Next */}
+            <button
+              onClick={() => setDate(view === "week" ? addDays(date, 7) : addDays(date, 1))}
+              className="flex h-8 w-8 items-center justify-center rounded-md text-ink-600 hover:bg-ink-100"
+            >
+              <ChevronRight size={18} />
+            </button>
 
-        {/* Date label */}
-        <span className="min-w-0 shrink truncate px-0.5 text-xs font-medium text-ink-800 sm:px-2 sm:text-sm">
-          {view === "week" ? (() => {
-            const mon = getMonday(date);
-            const sun = new Date(mon); sun.setDate(sun.getDate() + 6);
-            return `${mon.toLocaleDateString("pt-PT", { day: "numeric", month: "short" })} – ${sun.toLocaleDateString("pt-PT", { day: "numeric", month: "short" })}`;
-          })() : (
-            <>
-              <span className="sm:hidden">{date.toLocaleDateString("pt-PT", { day: "numeric", month: "short" })}</span>
-              <span className="hidden sm:inline">{date.toLocaleDateString("pt-PT", { weekday: "short", day: "numeric", month: "short" })}</span>
-            </>
-          )}
-        </span>
+            {/* Date label */}
+            <span className="min-w-0 shrink truncate px-0.5 text-xs font-medium text-ink-800 sm:px-2 sm:text-sm">
+              {view === "week" ? (() => {
+                const mon = getMonday(date);
+                const sun = new Date(mon); sun.setDate(sun.getDate() + 6);
+                return `${mon.toLocaleDateString("pt-PT", { day: "numeric", month: "short" })} – ${sun.toLocaleDateString("pt-PT", { day: "numeric", month: "short" })}`;
+              })() : (
+                <>
+                  <span className="sm:hidden">{date.toLocaleDateString("pt-PT", { day: "numeric", month: "short" })}</span>
+                  <span className="hidden sm:inline">{date.toLocaleDateString("pt-PT", { weekday: "short", day: "numeric", month: "short" })}</span>
+                </>
+              )}
+            </span>
+          </>
+        )}
 
         <div className="flex-1" />
 
         {/* View toggle */}
         <div className="flex rounded-lg border border-ink-200 overflow-hidden">
           <button
+            onClick={() => setView("month")}
+            className={cn("flex h-8 items-center gap-1 px-2.5 text-xs font-medium transition", view === "month" ? "bg-brand-500 text-white" : "bg-white text-ink-600 hover:bg-ink-50")}
+          >
+            <CalendarDays size={13} />
+            <span className="hidden sm:inline">Mês</span>
+          </button>
+          <button
+            onClick={() => setView("list")}
+            className={cn("flex h-8 items-center gap-1 border-l border-ink-200 px-2.5 text-xs font-medium transition", view === "list" ? "bg-brand-500 text-white" : "bg-white text-ink-600 hover:bg-ink-50")}
+          >
+            <List size={13} />
+            <span className="hidden sm:inline">Lista</span>
+          </button>
+          <button
             onClick={() => setView("day")}
-            className={cn("flex h-8 items-center gap-1 px-2.5 text-xs font-medium transition", view === "day" ? "bg-brand-500 text-white" : "bg-white text-ink-600 hover:bg-ink-50")}
+            className={cn("flex h-8 items-center gap-1 border-l border-ink-200 px-2.5 text-xs font-medium transition", view === "day" ? "bg-brand-500 text-white" : "bg-white text-ink-600 hover:bg-ink-50")}
           >
             <Calendar size={13} />
             <span className="hidden sm:inline">Dia</span>
@@ -235,18 +257,20 @@ export function DayView() {
 
         <div className="flex-1 sm:hidden" />
 
-        {/* Panel toggle — mobile only */}
-        <button
-          onClick={() => setShowPanel((v) => !v)}
-          className={cn(
-            "flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-xs font-medium transition md:hidden",
-            showPanel ? "border-brand-300 bg-brand-50 text-brand-700" : "border-ink-200 text-ink-600 hover:bg-ink-50"
-          )}
-          aria-label="Resumo"
-        >
-          <BarChart3 size={14} />
-          {visibleAppts.length > 0 && <span>{visibleAppts.length}</span>}
-        </button>
+        {/* Panel toggle — mobile only, day view only */}
+        {view === "day" && (
+          <button
+            onClick={() => setShowPanel((v) => !v)}
+            className={cn(
+              "flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-xs font-medium transition md:hidden",
+              showPanel ? "border-brand-300 bg-brand-50 text-brand-700" : "border-ink-200 text-ink-600 hover:bg-ink-50"
+            )}
+            aria-label="Resumo"
+          >
+            <BarChart3 size={14} />
+            {visibleAppts.length > 0 && <span>{visibleAppts.length}</span>}
+          </button>
+        )}
 
         {/* Mobile: + with dropdown for new/recurring */}
         <NewAppointmentDropdown
@@ -268,6 +292,26 @@ export function DayView() {
           <CalendarClock size={16} /> Recorrente
         </button>
       </div>
+
+      {/* Month view */}
+      {view === "month" && (
+        <MonthView
+          date={date}
+          onSelectDay={(d) => {
+            setDate(d);
+            setView("list");
+          }}
+        />
+      )}
+
+      {/* List view (simple agenda) */}
+      {view === "list" && (
+        <ListView
+          appointments={appointments}
+          date={date}
+          onSelectAppointment={setSelectedAppointment}
+        />
+      )}
 
       {/* Week view */}
       {view === "week" && (

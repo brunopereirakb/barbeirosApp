@@ -5,7 +5,11 @@
       "Bash(Select-Object Name, PSIsContainer)",
       "Bash(Format-Table -AutoSize)",
       "Bash(docker --version)",
-      "Bash(npx prisma *)"
+      "Bash(npx prisma *)",
+      "Bash(npx tsc *)",
+      "Bash(./node_modules/.bin/tsc --noEmit)",
+      "PowerShell(Set-Location \"d:\\\\barbeirosApp\"; npx tsc --noEmit; Write-Output \"Exit: $LASTEXITCODE\")",
+      "PowerShell(Set-Location \"d:\\\\barbeirosApp\"; npx next lint 2>&1 | Select-Object -Last 30; Write-Output \"Exit: $LASTEXITCODE\")"
     ]
   }
 }
