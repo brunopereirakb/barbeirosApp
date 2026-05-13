@@ -1,9 +1,23 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { cn, isSameDay, isToday } from "@/lib/utils";
+import { cn, isSameDay, isToday, timeStringToMinutes } from "@/lib/utils";
 
-type MiniAppt = { startsAt: string; status: string };
+type MiniAppt = {
+  startsAt: string;
+  status: string;
+  service?: { durationMin: number };
+};
+
+type Service = { id: string; name: string; durationMin: number };
+
+type Settings = {
+  workdayStart: string;
+  workdayEnd: string;
+  lunchStart: string;
+  lunchEnd: string;
+  defaultServiceByWeekday?: Record<string, string>;
+};
 
 const WEEKDAYS_SHORT = ["S", "T", "Q", "Q", "S", "S", "D"];
 const MONTH_LABELS = [
@@ -28,19 +42,86 @@ function getMonthGrid(viewMonth: Date): Date[] {
   return days;
 }
 
+type DayInfo =
+  | { closed: true }
+  | {
+      closed: false;
+      morningFree: number;
+      afternoonFree: number;
+      morningTotal: number;
+      afternoonTotal: number;
+    };
+
+function dayInfo(
+  d: Date,
+  appts: MiniAppt[],
+  services: Service[],
+  settings: Settings | null
+): DayInfo {
+  if (!settings) return { closed: true };
+  const sid = settings.defaultServiceByWeekday?.[String(d.getDay())];
+  const svc = sid ? services.find((s) => s.id === sid) : undefined;
+  if (!svc) return { closed: true };
+
+  const slotMin = svc.durationMin;
+  const dayStart = timeStringToMinutes(settings.workdayStart);
+  const dayEnd = timeStringToMinutes(settings.workdayEnd);
+  const lunchStart = timeStringToMinutes(settings.lunchStart);
+  const lunchEnd = timeStringToMinutes(settings.lunchEnd);
+
+  const morningTotal = Math.max(0, Math.floor((lunchStart - dayStart) / slotMin));
+  const afternoonTotal = Math.max(0, Math.floor((dayEnd - lunchEnd) / slotMin));
+
+  let morningUsed = 0;
+  let afternoonUsed = 0;
+
+  for (const a of appts) {
+    if (a.status === "cancelled") continue;
+    const start = new Date(a.startsAt);
+    if (!isSameDay(start, d)) continue;
+    const startMin = start.getHours() * 60 + start.getMinutes();
+    const dur = a.service?.durationMin ?? slotMin;
+    const slots = Math.max(1, Math.ceil(dur / slotMin));
+    if (startMin < lunchStart) morningUsed += slots;
+    else if (startMin >= lunchEnd) afternoonUsed += slots;
+  }
+
+  return {
+    closed: false,
+    morningFree: Math.max(0, morningTotal - morningUsed),
+    afternoonFree: Math.max(0, afternoonTotal - afternoonUsed),
+    morningTotal,
+    afternoonTotal,
+  };
+}
+
+type DotKind = "red" | "yellow" | "green";
+
+function dotKind(info: DayInfo): DotKind {
+  if (info.closed) return "red";
+  const free = info.morningFree + info.afternoonFree;
+  const total = info.morningTotal + info.afternoonTotal;
+  if (free === 0) return "red";
+  if (total > 0 && free / total <= 0.25) return "yellow";
+  return "green";
+}
+
 export function MiniMonth({
   selected,
   onSelectDay,
+  settings,
+  services,
 }: {
   selected: Date;
   onSelectDay: (d: Date) => void;
+  settings: Settings | null;
+  services: Service[];
 }) {
   const [viewMonth, setViewMonth] = useState(
     new Date(selected.getFullYear(), selected.getMonth(), 1)
   );
   const [appointments, setAppointments] = useState<MiniAppt[]>([]);
 
-  // Keep viewMonth in sync if parent moves the selected day to a different month
   useEffect(() => {
     if (
       viewMonth.getFullYear() !== selected.getFullYear() ||
@@ -66,77 +147,143 @@ export function MiniMonth({
   }, [viewMonth]);
 
   const days = useMemo(() => getMonthGrid(viewMonth), [viewMonth]);
-  const apptsByDay = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const a of appointments) {
-      if (a.status === "cancelled") continue;
-      const d = new Date(a.startsAt);
-      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-      map.set(key, (map.get(key) || 0) + 1);
-    }
-    return map;
-  }, [appointments]);
 
   function shiftMonth(delta: number) {
     setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() + delta, 1));
   }
 
   return (
-    <div className="rounded-lg border border-ink-200 bg-white p-2.5">
-      <div className="mb-1.5 flex items-center justify-between">
+    <div className="rounded-lg border border-ink-200 bg-white p-3">
+      {/* Header */}
+      <div className="mb-2 flex items-center justify-between">
         <button
           onClick={() => shiftMonth(-1)}
-          className="flex h-7 w-7 items-center justify-center rounded text-ink-500 hover:bg-ink-100"
+          className="flex h-8 w-8 items-center justify-center rounded text-ink-500 hover:bg-ink-100"
           aria-label="Mês anterior"
         >
-          <ChevronLeft size={14} />
+          <ChevronLeft size={16} />
         </button>
-        <span className="text-xs font-medium text-ink-800">
+        <span className="text-sm font-medium text-ink-800">
           {MONTH_LABELS[viewMonth.getMonth()]} {viewMonth.getFullYear()}
         </span>
         <button
           onClick={() => shiftMonth(1)}
-          className="flex h-7 w-7 items-center justify-center rounded text-ink-500 hover:bg-ink-100"
+          className="flex h-8 w-8 items-center justify-center rounded text-ink-500 hover:bg-ink-100"
           aria-label="Próximo mês"
         >
-          <ChevronRight size={14} />
+          <ChevronRight size={16} />
         </button>
       </div>
 
-      <div className="grid grid-cols-7 gap-0.5">
+      {/* Weekday header */}
+      <div className="grid grid-cols-7 gap-1">
         {WEEKDAYS_SHORT.map((w, i) => (
           <div
             key={`${w}-${i}`}
-            className="py-1 text-center text-[10px] font-medium uppercase text-ink-400"
+            className="py-1 text-center text-[10px] font-medium uppercase tracking-wide text-ink-400"
           >
             {w}
           </div>
         ))}
+      </div>
+
+      {/* Days grid */}
+      <div className="mt-1 grid grid-cols-7 gap-1">
         {days.map((d) => {
           const inMonth = d.getMonth() === viewMonth.getMonth();
           const isSel = isSameDay(d, selected);
           const today = isToday(d);
-          const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-          const count = apptsByDay.get(key) || 0;
+          const info = dayInfo(d, appointments, services, settings);
+          const dot = dotKind(info);
+
           return (
             <button
               key={d.toISOString()}
               onClick={() => onSelectDay(d)}
               className={cn(
-                "relative flex h-7 w-7 items-center justify-center rounded text-xs transition",
-                !inMonth && "text-ink-300",
-                inMonth && !isSel && "text-ink-800 hover:bg-ink-100",
-                isSel && "bg-brand-500 text-white",
+                "relative flex aspect-[1/1.1] min-h-[44px] flex-col items-stretch justify-between rounded-md border p-1 text-left transition",
+                isSel
+                  ? "border-brand-500 bg-brand-500 text-white"
+                  : inMonth
+                    ? "border-ink-100 bg-white text-ink-800 hover:border-brand-200 hover:bg-brand-50/40"
+                    : "border-transparent bg-ink-50/40 text-ink-300",
                 !isSel && today && "ring-1 ring-brand-300"
               )}
             >
-              {d.getDate()}
-              {!isSel && count > 0 && (
-                <span className="absolute bottom-0.5 h-1 w-1 rounded-full bg-brand-500" />
+              {/* Top row: date + dot */}
+              <div className="flex items-center justify-between">
+                <span
+                  className={cn(
+                    "text-[11px] font-semibold leading-none sm:text-xs",
+                    !inMonth && !isSel && "text-ink-300"
+                  )}
+                >
+                  {d.getDate()}
+                </span>
+                {inMonth && (
+                  <span
+                    className={cn(
+                      "h-1.5 w-1.5 rounded-full",
+                      isSel
+                        ? "bg-white/90"
+                        : dot === "red"
+                          ? "bg-red-500"
+                          : dot === "yellow"
+                            ? "bg-amber-400"
+                            : "bg-emerald-500"
+                    )}
+                    title={
+                      info.closed
+                        ? "Fechado"
+                        : dot === "red"
+                          ? "Sem vagas"
+                          : dot === "yellow"
+                            ? "Quase cheio"
+                            : "Vagas disponíveis"
+                    }
+                  />
+                )}
+              </div>
+
+              {/* Bottom: n|x */}
+              {inMonth && !info.closed && (
+                <span
+                  className={cn(
+                    "text-[9px] font-medium leading-none tabular-nums sm:text-[10px]",
+                    isSel ? "text-white/90" : "text-ink-500"
+                  )}
+                >
+                  {info.morningFree}
+                  <span className={cn("mx-0.5", isSel ? "text-white/60" : "text-ink-300")}>|</span>
+                  {info.afternoonFree}
+                </span>
+              )}
+              {inMonth && info.closed && (
+                <span
+                  className={cn(
+                    "text-[9px] font-medium uppercase leading-none",
+                    isSel ? "text-white/80" : "text-red-500/70"
+                  )}
+                >
+                  fechado
+                </span>
               )}
             </button>
           );
         })}
+      </div>
+
+      {/* Legend */}
+      <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-ink-500">
+        <span className="flex items-center gap-1">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> vagas
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="h-1.5 w-1.5 rounded-full bg-amber-400" /> quase cheio
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="h-1.5 w-1.5 rounded-full bg-red-500" /> cheio/fechado
+        </span>
       </div>
     </div>
   );

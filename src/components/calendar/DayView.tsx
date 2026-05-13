@@ -289,10 +289,15 @@ export function DayView() {
 
       {/* Dashboard (main) — mini-month + notes | slots */}
       {view === "dashboard" && (
-        <div className="grid flex-1 grid-cols-1 overflow-hidden md:grid-cols-[260px_1fr]">
+        <div className="grid flex-1 grid-cols-1 overflow-hidden md:grid-cols-[380px_1fr]">
           {/* Left rail: mini-month + day notes */}
-          <aside className="flex shrink-0 flex-col gap-2 overflow-y-auto border-b border-ink-200 bg-ink-50/60 p-2.5 md:border-b-0 md:border-r">
-            <MiniMonth selected={date} onSelectDay={setDate} />
+          <aside className="flex shrink-0 flex-col gap-3 overflow-y-auto border-b border-ink-200 bg-ink-50/60 p-3 md:border-b-0 md:border-r">
+            <MiniMonth
+              selected={date}
+              onSelectDay={setDate}
+              settings={settings}
+              services={services}
+            />
             <DayNoteCard date={date} />
           </aside>
 
