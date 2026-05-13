@@ -49,6 +49,10 @@ model Client {
   userId          String
   user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   // Short human-friendly identifier, unique per tenant (1, 2, 3, …). Backfilled lazily.
+  // Uniqueness is enforced by application logic (nextClientCode + retry on P2002)
+  // plus a partial Postgres index added via raw migration below. We don't use
+  // Prisma's @@unique here because that creates a constraint that conflicts with
+  // legacy rows where code is NULL.
   code            Int?
   name            String
   phone           String?
@@ -61,8 +65,8 @@ model Client {
   appointments    Appointment[]
   waitlistEntries WaitlistEntry[]
 
-  @@unique([userId, code])
   @@index([userId])
+  @@index([userId, code])
 }
 
 model Service {
