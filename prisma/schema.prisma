@@ -1,0 +1,182 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String         @id @default(cuid())
+  email        String         @unique
+  password     String
+  name         String
+  role         String         @default("user") // "user" | "admin"
+  active       Boolean        @default(true)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  subscription Subscription?
+  settings     Settings?
+  clients      Client[]
+  services     Service[]
+  appointments Appointment[]
+  waitlist     WaitlistEntry[]
+  cascadeOffers CascadeOffer[]
+  messageLogs  MessageLog[]
+}
+
+model Subscription {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan          String    @default("BASE")
+  addons        String    @default("[]") // JSON array
+  status        String    @default("active") // active | trial | paused | expired | cancelled
+  trialEndsAt   DateTime?
+  expiresAt     DateTime?
+  renewalType   String    @default("monthly") // monthly | annual | manual
+  paymentStatus String    @default("paid")    // paid | pending | overdue
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Client {
+  id              String          @id @default(cuid())
+  userId          String
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String
+  phone           String?
+  email           String?
+  birthday        DateTime?
+  notes           String?
+  customerSince   DateTime        @default(now())
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  appointments    Appointment[]
+  waitlistEntries WaitlistEntry[]
+
+  @@index([userId])
+}
+
+model Service {
+  id              String          @id @default(cuid())
+  userId          String
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String
+  durationMin     Int
+  category        String?
+  active          Boolean         @default(true)
+  appointments    Appointment[]
+  waitlistEntries WaitlistEntry[]
+
+  @@index([userId])
+}
+
+model Appointment {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id])
+  serviceId   String
+  service     Service  @relation(fields: [serviceId], references: [id])
+  startsAt    DateTime
+  endsAt      DateTime
+  status      String   @default("pending") // pending | confirmed | done | cancelled | no_show
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([startsAt])
+  @@index([status])
+}
+
+model WaitlistEntry {
+  id          String         @id @default(cuid())
+  userId      String
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId    String
+  client      Client         @relation(fields: [clientId], references: [id])
+  serviceId   String
+  service     Service        @relation(fields: [serviceId], references: [id])
+  preferences String         @default("{}")
+  active      Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  offers      CascadeOffer[]
+
+  @@index([userId])
+}
+
+model CascadeOffer {
+  id              String        @id @default(cuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cascadeId       String
+  waitlistEntryId String
+  waitlistEntry   WaitlistEntry @relation(fields: [waitlistEntryId], references: [id])
+  freedStartsAt   DateTime
+  freedEndsAt     DateTime
+  sentAt          DateTime      @default(now())
+  expiresAt       DateTime
+  status          String        @default("pending") // pending | queued | accepted | declined | expired | superseded
+  resolvedAt      DateTime?
+  position        Int           @default(0)
+
+  @@index([userId])
+  @@index([cascadeId])
+  @@index([status])
+}
+
+model MessageLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  channel   String   // whatsapp | email | sms
+  recipient String
+  content   String
+  status    String   // sent | mocked | failed
+  context   String?
+  sentAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([sentAt])
+}
+
+model Settings {
+  userId              String  @id
+  user                User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  salonName           String  @default("O Meu Salão")
+  workdayStart        String  @default("09:00")
+  workdayEnd          String  @default("19:00")
+  lunchStart          String  @default("12:30")
+  lunchEnd            String  @default("14:00")
+  cascadeWaitMinutes  Int     @default(30)
+  reminderHoursBefore Int     @default(24)
+}
+
+model PlanDefinition {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String
+  description String?
+  price       Float    @default(0)
+  features    String   @default("[]") // JSON string[]
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AddonDefinition {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String
+  description String?
+  price       Float    @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

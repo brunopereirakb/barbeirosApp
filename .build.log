@@ -1,0 +1,23 @@
+2026-05-10T11:25:28.953032 Project directory: /usr/local/src/ScheduleHairdresser
+2026-05-10T11:25:28.953349 Pulling project images
+2026-05-10T11:25:28.956331 ------------------------------
+2026-05-10T11:25:29.357690 time="2026-05-10T11:25:29Z" level=warning msg="/usr/local/src/ScheduleHairdresser/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+2026-05-10T11:25:29.445717  app Skipped No image to be pulled
+2026-05-10T11:25:29.445816  Image postgres:16-alpine Pulling 
+2026-05-10T11:25:30.478329  Image postgres:16-alpine Pulled 
+2026-05-10T11:25:30.604071 ------------------------------
+2026-05-10T11:25:30.604221 Deploying project
+2026-05-10T11:25:30.604920 ------------------------------
+2026-05-10T11:25:30.716594 time="2026-05-10T11:25:30Z" level=warning msg="/usr/local/src/ScheduleHairdresser/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+2026-05-10T11:25:30.833192  Container schedulehairdresser-db-1 Recreate 
+2026-05-10T11:25:31.313707  Container schedulehairdresser-db-1 Recreated 
+2026-05-10T11:25:31.313997  Container schedulehairdresser-app-1 Recreate 
+2026-05-10T11:25:31.476124  Container schedulehairdresser-app-1 Recreated 
+2026-05-10T11:25:31.509183  Container schedulehairdresser-db-1 Starting 
+2026-05-10T11:25:31.688853  Container schedulehairdresser-db-1 Started 
+2026-05-10T11:25:31.689029  Container schedulehairdresser-db-1 Waiting 
+2026-05-10T11:25:37.193852  Container schedulehairdresser-db-1 Healthy 
+2026-05-10T11:25:37.193906  Container schedulehairdresser-app-1 Starting 
+2026-05-10T11:25:37.414010  Container schedulehairdresser-app-1 Started 
+2026-05-10T11:25:37.420222 ------------------------------
+2026-05-10T11:25:37.420274 Project deployed successfully
