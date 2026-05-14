@@ -14,9 +14,14 @@ export default function StatsPage() {
 
   useEffect(() => {
     async function load() {
+      const today = new Date();
+      const dayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
+      const dayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
       const [clients, appts] = await Promise.all([
         fetch("/api/clients").then((r) => r.json()),
-        fetch(`/api/appointments?date=${new Date().toISOString()}`).then((r) => r.json()),
+        fetch(
+          `/api/appointments?dateFrom=${dayStart.toISOString()}&dateTo=${dayEnd.toISOString()}`
+        ).then((r) => r.json()),
       ]);
 
       const now = new Date();

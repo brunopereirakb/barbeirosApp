@@ -104,7 +104,14 @@ export function DayView() {
           `/api/appointments/search?dateFrom=${monday.toISOString()}&dateTo=${sunday.toISOString()}&limit=500`
         ).then((r) => r.ok ? r.json() : []).catch(() => []);
       } else {
-        apptRes = await fetch(`/api/appointments?date=${date.toISOString()}`).then((r) => r.ok ? r.json() : []).catch(() => []);
+        // Use the user's local civil day as the window — the server is in
+        // UTC and can't infer the browser's timezone, so we send both
+        // endpoints explicitly.
+        const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
+        const dayEnd = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
+        apptRes = await fetch(
+          `/api/appointments?dateFrom=${dayStart.toISOString()}&dateTo=${dayEnd.toISOString()}`
+        ).then((r) => r.ok ? r.json() : []).catch(() => []);
       }
 
       const [setRes, wlRes, bdayRes, svcRes] = await Promise.all([

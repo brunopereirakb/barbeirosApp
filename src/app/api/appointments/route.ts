@@ -1,20 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireTenant } from "@/lib/api-auth";
-import { startOfDay, endOfDay } from "@/lib/utils";
 
 export async function GET(req: NextRequest) {
   const { tenantId, response } = await requireTenant();
   if (response) return response;
 
   const url = new URL(req.url);
-  const dateParam = url.searchParams.get("date");
-  const date = dateParam ? new Date(dateParam) : new Date();
+  // Callers MUST send dateFrom/dateTo (ISO) computed in *their* local
+  // timezone — otherwise this endpoint can't know which civil day they
+  // mean. Previous behaviour (`?date=...` + server-side setHours) silently
+  // returned the wrong UTC day for any timezone east of UTC, which made
+  // bookings vanish from the slot list.
+  const dateFrom = url.searchParams.get("dateFrom");
+  const dateTo = url.searchParams.get("dateTo");
+  if (!dateFrom || !dateTo) {
+    return NextResponse.json(
+      { error: "dateFrom and dateTo are required (ISO timestamps)" },
+      { status: 400 }
+    );
+  }
 
   const appointments = await prisma.appointment.findMany({
     where: {
       userId: tenantId,
-      startsAt: { gte: startOfDay(date), lte: endOfDay(date) },
+      startsAt: { gte: new Date(dateFrom), lte: new Date(dateTo) },
     },
     include: { client: true, service: true },
     orderBy: { startsAt: "asc" },
