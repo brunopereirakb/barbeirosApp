@@ -2,20 +2,27 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireTenant } from "@/lib/api-auth";
 import { sendWhatsApp, messageTemplates } from "@/lib/whatsapp";
+import { salonStartOfDay, salonEndOfDay, zonedParts, zonedDayToUTC } from "@/lib/timezone";
 
 export async function POST(req: NextRequest) {
   const { tenantId, response } = await requireTenant();
   if (response) return response;
 
   const { day } = await req.json() as { day: "today" | "tomorrow" };
-  const target = new Date();
-  if (day === "tomorrow") target.setDate(target.getDate() + 1);
-  target.setHours(0, 0, 0, 0);
-  const end = new Date(target);
-  end.setHours(23, 59, 59, 999);
 
   const settings = await prisma.settings.findUnique({ where: { userId: tenantId } });
+  const tz = settings?.timezone || "Europe/Lisbon";
   const salonName = settings?.salonName ?? "O Meu Salão";
+
+  // "today" / "tomorrow" mean the salon's civil day — not the server's UTC
+  // day, which can be off by one near midnight or in any non-UTC timezone.
+  const now = new Date();
+  const todayParts = zonedParts(now, tz);
+  const target =
+    day === "tomorrow"
+      ? zonedDayToUTC(todayParts.year, todayParts.month, todayParts.day + 1, 0, 0, tz)
+      : salonStartOfDay(now, tz);
+  const end = salonEndOfDay(target, tz);
 
   const appointments = await prisma.appointment.findMany({
     where: {

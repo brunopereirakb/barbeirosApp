@@ -1,13 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireTenant } from "@/lib/api-auth";
+import { zonedParts } from "@/lib/timezone";
 
-function toDateOnly(input: string | null): Date | null {
+/**
+ * Resolve an arbitrary client-sent ISO to UTC midnight of the salon's
+ * CIVIL day. This guarantees the storage key matches what the user
+ * intuitively sees on the calendar, regardless of either party's clock.
+ */
+async function toSalonDateOnly(input: string | null, tenantId: string): Promise<Date | null> {
   if (!input) return null;
   const d = new Date(input);
   if (Number.isNaN(d.getTime())) return null;
-  // Normalize to UTC midnight so @db.Date storage is stable across timezones.
-  return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const settings = await prisma.settings.findUnique({ where: { userId: tenantId } });
+  const tz = settings?.timezone || "Europe/Lisbon";
+  const p = zonedParts(d, tz);
+  return new Date(Date.UTC(p.year, p.month - 1, p.day));
 }
 
 export async function GET(req: NextRequest) {
@@ -15,7 +23,7 @@ export async function GET(req: NextRequest) {
   if (response) return response;
 
   const url = new URL(req.url);
-  const date = toDateOnly(url.searchParams.get("date"));
+  const date = await toSalonDateOnly(url.searchParams.get("date"), tenantId);
   if (!date) {
     return NextResponse.json({ error: "date inválida" }, { status: 400 });
   }
@@ -31,7 +39,7 @@ export async function PUT(req: NextRequest) {
   if (response) return response;
 
   const body = await req.json();
-  const date = toDateOnly(body.date);
+  const date = await toSalonDateOnly(body.date, tenantId);
   const text: string = (body.text ?? "").toString();
   if (!date) {
     return NextResponse.json({ error: "date inválida" }, { status: 400 });

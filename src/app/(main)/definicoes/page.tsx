@@ -9,6 +9,7 @@ type WorkEntry = { closed: boolean; start: string; end: string };
 
 type Settings = {
   salonName: string;
+  timezone: string;
   workdayStart: string;
   workdayEnd: string;
   lunchStart: string;
@@ -19,6 +20,21 @@ type Settings = {
   defaultServiceByWeekday: Record<string, string>;
   workScheduleByWeekday: Record<string, WorkEntry>;
 };
+
+const TIMEZONE_OPTIONS = [
+  "Europe/Lisbon",
+  "Europe/Madrid",
+  "Europe/London",
+  "Europe/Paris",
+  "Europe/Berlin",
+  "Europe/Zurich",
+  "Atlantic/Madeira",
+  "Atlantic/Azores",
+  "America/Sao_Paulo",
+  "America/New_York",
+  "America/Los_Angeles",
+  "UTC",
+];
 
 const WEEKDAY_NAMES = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 // Display Mon..Sun in the UI (matches Portuguese week order) but the data keys remain 0=Sun..6=Sat.
@@ -104,6 +120,22 @@ export default function SettingsPage() {
                 onChange={(e) => setS({ ...s, salonName: e.target.value })}
                 className="input"
               />
+            </Field>
+            <Field label="Fuso horário">
+              <select
+                value={s.timezone || "Europe/Lisbon"}
+                onChange={(e) => setS({ ...s, timezone: e.target.value })}
+                className="input"
+              >
+                {(TIMEZONE_OPTIONS.includes(s.timezone)
+                  ? TIMEZONE_OPTIONS
+                  : [s.timezone, ...TIMEZONE_OPTIONS]
+                ).map((tz) => (
+                  <option key={tz} value={tz}>
+                    {tz}
+                  </option>
+                ))}
+              </select>
             </Field>
           </Section>
 

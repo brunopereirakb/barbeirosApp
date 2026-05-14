@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireTenant } from "@/lib/api-auth";
+import { salonDayOfWeek } from "@/lib/timezone";
 
 type Conflict = {
   index: number;
@@ -87,6 +88,7 @@ export async function POST(req: NextRequest) {
 
   // Closed-day check
   const settings = await prisma.settings.findUnique({ where: { userId: tenantId } });
+  const tz = settings?.timezone || "Europe/Lisbon";
   let workSchedule: Record<string, { closed?: boolean; start?: string; end?: string }> = {};
   try {
     workSchedule = JSON.parse(settings?.workScheduleByWeekday || "{}");
@@ -98,7 +100,7 @@ export async function POST(req: NextRequest) {
   const flagged = new Set<number>();
 
   for (const p of planned) {
-    const entry = workSchedule[String(p.start.getDay())];
+    const entry = workSchedule[String(salonDayOfWeek(p.start, tz))];
     if (entry?.closed) {
       conflicts.push({ index: p.idx, startsAt: p.start.toISOString(), reason: "closed" });
       flagged.add(p.idx);

@@ -1,5 +1,6 @@
 import { prisma } from "./db";
 import { sendWhatsApp, messageTemplates } from "./whatsapp";
+import { salonDayOfWeek, salonHour } from "./timezone";
 
 export interface FreedSlot {
   startsAt: Date;
@@ -8,15 +9,19 @@ export interface FreedSlot {
 }
 
 export async function findEligibleWaitlist(slot: FreedSlot, tenantId: string) {
-  const all = await prisma.waitlistEntry.findMany({
-    where: { userId: tenantId, active: true },
-    include: { client: true, service: true },
-    orderBy: { createdAt: "asc" },
-  });
+  const [all, settings] = await Promise.all([
+    prisma.waitlistEntry.findMany({
+      where: { userId: tenantId, active: true },
+      include: { client: true, service: true },
+      orderBy: { createdAt: "asc" },
+    }),
+    prisma.settings.findUnique({ where: { userId: tenantId } }),
+  ]);
 
+  const tz = settings?.timezone || "Europe/Lisbon";
   const slotDurationMin = (slot.endsAt.getTime() - slot.startsAt.getTime()) / 60000;
-  const dayOfWeek = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][slot.startsAt.getDay()];
-  const hour = slot.startsAt.getHours();
+  const dayOfWeek = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][salonDayOfWeek(slot.startsAt, tz)];
+  const hour = salonHour(slot.startsAt, tz);
   const periodOfDay = hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
 
   return all.filter((entry: typeof all[number]) => {

@@ -61,6 +61,20 @@ export async function PATCH(req: NextRequest) {
   const body = await req.json();
   const data: Record<string, unknown> = {};
   if (body.salonName !== undefined) data.salonName = body.salonName;
+  if (body.timezone !== undefined) {
+    // Validate the IANA name by trying to build a formatter — bad values
+    // throw RangeError. Reject so we don't poison every server-side day
+    // calculation later.
+    try {
+      new Intl.DateTimeFormat("en-US", { timeZone: String(body.timezone) });
+      data.timezone = String(body.timezone);
+    } catch {
+      return NextResponse.json(
+        { error: "Timezone IANA inválida" },
+        { status: 400 }
+      );
+    }
+  }
   if (body.workdayStart !== undefined) data.workdayStart = body.workdayStart;
   if (body.workdayEnd !== undefined) data.workdayEnd = body.workdayEnd;
   if (body.lunchStart !== undefined) data.lunchStart = body.lunchStart;

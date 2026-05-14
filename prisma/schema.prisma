@@ -159,6 +159,10 @@ model Settings {
   userId                  String  @id
   user                    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   salonName               String  @default("O Meu Salão")
+  // IANA timezone (e.g. "Europe/Lisbon", "America/Sao_Paulo"). Used on the
+  // server to interpret "today/tomorrow/this week" and weekday/period of day
+  // for closed-day checks, reminders, broadcasts and waitlist matching.
+  timezone                String  @default("Europe/Lisbon")
   workdayStart            String  @default("09:00")
   workdayEnd              String  @default("19:00")
   lunchStart              String  @default("12:30")
