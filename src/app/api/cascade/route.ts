@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireTenant } from "@/lib/api-auth";
 import { acceptOffer, declineOffer, processCascadeTick, forceAdvance } from "@/lib/cascade";
+import { autoCompleteExpired } from "@/lib/auto-complete";
 import { prisma } from "@/lib/db";
 
 export async function GET() {
@@ -33,8 +34,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(result);
   }
   if (action === "tick") {
-    const result = await processCascadeTick(tenantId);
-    return NextResponse.json(result);
+    // Run both the cascade-offer sweep and the auto-complete sweep so the
+    // dashboard's minute-polling silently closes bookings the user forgot
+    // to mark as done.
+    const [cascade, autoCompleted] = await Promise.all([
+      processCascadeTick(tenantId),
+      autoCompleteExpired(tenantId),
+    ]);
+    return NextResponse.json({ ...cascade, autoCompleted });
   }
   if (action === "force-advance" && cascadeId) {
     const result = await forceAdvance(cascadeId, tenantId);

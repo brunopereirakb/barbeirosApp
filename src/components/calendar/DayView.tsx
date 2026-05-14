@@ -84,12 +84,22 @@ export function DayView() {
   useEffect(() => {
     const tick = async () => {
       try {
-        await fetch("/api/cascade", { method: "POST", body: JSON.stringify({ action: "tick" }), headers: { "Content-Type": "application/json" } });
+        const r = await fetch("/api/cascade", {
+          method: "POST",
+          body: JSON.stringify({ action: "tick" }),
+          headers: { "Content-Type": "application/json" },
+        });
+        // Reload the dashboard if the tick auto-completed any expired
+        // bookings, so the user sees the status flip without a manual
+        // refresh.
+        const data = await r.json().catch(() => ({}));
+        if (data?.autoCompleted > 0) void load();
       } catch {}
     };
     tick();
     const t = setInterval(tick, 60_000);
     return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => { void load(); }, [date, view]); // eslint-disable-line react-hooks/exhaustive-deps
