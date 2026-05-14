@@ -176,6 +176,13 @@ model Settings {
   // JSON: { "0": "serviceId", "1": "serviceId", ... } where 0=Sunday, 6=Saturday.
   // Drives slot duration on the dashboard.
   defaultServiceByWeekday String  @default("{}")
+  // Optional per-weekday time-windowed service override. When set for a
+  // weekday, REPLACES the single default for that day. JSON shape:
+  //   { "1": [{ "start": "08:00", "end": "18:00", "serviceId": "abc" },
+  //           { "start": "18:00", "end": "20:00", "serviceId": "def" }] }
+  // Niche feature — most users keep this empty and rely on the single
+  // default above.
+  defaultServiceWindowsByWeekday String @default("{}")
   // JSON: { "0": {"closed": true}, "1": {"start": "09:00", "end": "19:00"}, ... }.
   // Missing key falls back to workdayStart/workdayEnd. 0=Sunday, 6=Saturday.
   workScheduleByWeekday   String  @default("{}")

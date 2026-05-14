@@ -1,11 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
-import { Save } from "lucide-react";
+import { Save, ChevronDown, Plus, X } from "lucide-react";
 
 type Service = { id: string; name: string; durationMin: number };
 
 type WorkEntry = { closed: boolean; start: string; end: string };
+
+type ServiceWindowEntry = { start: string; end: string; serviceId: string };
 
 type Settings = {
   salonName: string;
@@ -19,6 +21,7 @@ type Settings = {
   reminderTemplate: string | null;
   whatsappMode: string;
   defaultServiceByWeekday: Record<string, string>;
+  defaultServiceWindowsByWeekday: Record<string, ServiceWindowEntry[]>;
   workScheduleByWeekday: Record<string, WorkEntry>;
 };
 
@@ -81,6 +84,7 @@ export default function SettingsPage() {
         setS({
           ...data,
           defaultServiceByWeekday: data.defaultServiceByWeekday ?? {},
+          defaultServiceWindowsByWeekday: data.defaultServiceWindowsByWeekday ?? {},
           workScheduleByWeekday: buildInitialSchedule(
             data.workScheduleByWeekday,
             data.workdayStart,
@@ -236,29 +240,33 @@ export default function SettingsPage() {
               {WEEKDAY_ORDER.map((dow) => {
                 const key = String(dow);
                 const value = s.defaultServiceByWeekday[key] ?? "";
+                const windows = s.defaultServiceWindowsByWeekday[key] ?? [];
+                const hasWindows = windows.length > 0;
                 return (
-                  <div key={dow} className="flex items-center gap-3">
-                    <span className="w-20 shrink-0 text-xs font-medium text-ink-700">
-                      {WEEKDAY_NAMES[dow]}
-                    </span>
-                    <select
-                      value={value}
-                      onChange={(e) => {
-                        const next = { ...s.defaultServiceByWeekday };
-                        if (e.target.value) next[key] = e.target.value;
-                        else delete next[key];
-                        setS({ ...s, defaultServiceByWeekday: next });
-                      }}
-                      className="input flex-1"
-                    >
-                      <option value="">— sem serviço padrão —</option>
-                      {services.map((sv) => (
-                        <option key={sv.id} value={sv.id}>
-                          {sv.name} ({sv.durationMin} min)
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <DayServiceRow
+                    key={dow}
+                    name={WEEKDAY_NAMES[dow]}
+                    weekdayKey={key}
+                    weekdayHours={s.workScheduleByWeekday[key]}
+                    fallbackStart={s.workdayStart}
+                    fallbackEnd={s.workdayEnd}
+                    services={services}
+                    singleValue={value}
+                    onSingleChange={(svcId) => {
+                      const next = { ...s.defaultServiceByWeekday };
+                      if (svcId) next[key] = svcId;
+                      else delete next[key];
+                      setS({ ...s, defaultServiceByWeekday: next });
+                    }}
+                    windows={windows}
+                    onWindowsChange={(updated) => {
+                      const next = { ...s.defaultServiceWindowsByWeekday };
+                      if (updated.length === 0) delete next[key];
+                      else next[key] = updated;
+                      setS({ ...s, defaultServiceWindowsByWeekday: next });
+                    }}
+                    hasWindows={hasWindows}
+                  />
                 );
               })}
             </div>
@@ -359,6 +367,160 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     <div>
       <label className="mb-1 block text-xs font-medium text-ink-600">{label}</label>
       {children}
+    </div>
+  );
+}
+
+/**
+ * One weekday row in "Serviço padrão por dia da semana" — shows the simple
+ * single-service select by default. Under "Avançado" you can split the day
+ * into time windows that each use their own service (the rare case the user
+ * asked us to keep tucked away).
+ */
+function DayServiceRow({
+  name,
+  weekdayKey,
+  weekdayHours,
+  fallbackStart,
+  fallbackEnd,
+  services,
+  singleValue,
+  onSingleChange,
+  windows,
+  onWindowsChange,
+  hasWindows,
+}: {
+  name: string;
+  weekdayKey: string;
+  weekdayHours?: WorkEntry;
+  fallbackStart: string;
+  fallbackEnd: string;
+  services: Service[];
+  singleValue: string;
+  onSingleChange: (id: string) => void;
+  windows: ServiceWindowEntry[];
+  onWindowsChange: (next: ServiceWindowEntry[]) => void;
+  hasWindows: boolean;
+}) {
+  const [open, setOpen] = useState(hasWindows);
+  const dayStart = weekdayHours?.start || fallbackStart;
+  const dayEnd = weekdayHours?.end || fallbackEnd;
+
+  function addWindow() {
+    // Default: pick up where the last window ended (or dayStart) and run
+    // until dayEnd, with the first available service.
+    const lastEnd = windows.length > 0 ? windows[windows.length - 1].end : dayStart;
+    const next: ServiceWindowEntry = {
+      start: lastEnd,
+      end: dayEnd,
+      serviceId: singleValue || services[0]?.id || "",
+    };
+    onWindowsChange([...windows, next]);
+  }
+  function updateWindow(idx: number, patch: Partial<ServiceWindowEntry>) {
+    onWindowsChange(windows.map((w, i) => (i === idx ? { ...w, ...patch } : w)));
+  }
+  function removeWindow(idx: number) {
+    onWindowsChange(windows.filter((_, i) => i !== idx));
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-3">
+        <span className="w-20 shrink-0 text-xs font-medium text-ink-700">{name}</span>
+        <select
+          value={singleValue}
+          onChange={(e) => onSingleChange(e.target.value)}
+          disabled={hasWindows}
+          className="input flex-1 disabled:bg-ink-100 disabled:text-ink-400"
+          title={hasWindows ? "Definido pelos períodos abaixo" : undefined}
+        >
+          <option value="">— sem serviço padrão —</option>
+          {services.map((sv) => (
+            <option key={sv.id} value={sv.id}>
+              {sv.name} ({sv.durationMin} min)
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className={`flex shrink-0 items-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-medium transition ${
+            hasWindows
+              ? "border border-brand-300 bg-brand-50 text-brand-700 hover:bg-brand-100"
+              : "border border-ink-200 text-ink-500 hover:bg-ink-50"
+          }`}
+          title="Aplicar serviços diferentes a horários do mesmo dia"
+        >
+          Avançado
+          <ChevronDown
+            size={11}
+            className={`transition ${open ? "rotate-180" : ""}`}
+          />
+        </button>
+      </div>
+
+      {open && (
+        <div className="ml-[5.75rem] rounded-md border border-ink-200 bg-ink-50/40 p-2.5">
+          <p className="mb-2 text-[11px] text-ink-500">
+            Aplicar serviços diferentes em horários do mesmo dia. Cada
+            período usa a duração desse serviço como tamanho de slot. Deixa
+            sem períodos para usar apenas o serviço padrão acima.
+          </p>
+          {windows.length === 0 ? (
+            <p className="text-[11px] text-ink-400">
+              Sem períodos configurados — está a ser usado o serviço padrão
+              acima ({weekdayKey ? "" : ""}{dayStart}–{dayEnd}).
+            </p>
+          ) : (
+            <div className="space-y-1.5">
+              {windows.map((w, i) => (
+                <div key={i} className="flex items-center gap-1.5">
+                  <input
+                    type="time"
+                    value={w.start}
+                    onChange={(e) => updateWindow(i, { start: e.target.value })}
+                    className="input w-24 px-2 py-1 text-xs"
+                  />
+                  <span className="text-[11px] text-ink-400">–</span>
+                  <input
+                    type="time"
+                    value={w.end}
+                    onChange={(e) => updateWindow(i, { end: e.target.value })}
+                    className="input w-24 px-2 py-1 text-xs"
+                  />
+                  <select
+                    value={w.serviceId}
+                    onChange={(e) => updateWindow(i, { serviceId: e.target.value })}
+                    className="input flex-1 px-2 py-1 text-xs"
+                  >
+                    {services.map((sv) => (
+                      <option key={sv.id} value={sv.id}>
+                        {sv.name} ({sv.durationMin} min)
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => removeWindow(i)}
+                    title="Remover período"
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-ink-400 hover:bg-red-100 hover:text-red-600"
+                  >
+                    <X size={13} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={addWindow}
+            className="mt-2 inline-flex items-center gap-1 rounded-md border border-dashed border-ink-300 px-2 py-1 text-[11px] font-medium text-ink-600 hover:border-brand-400 hover:text-brand-700"
+          >
+            <Plus size={11} /> Adicionar período
+          </button>
+        </div>
+      )}
     </div>
   );
 }

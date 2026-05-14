@@ -13,6 +13,8 @@ import {
 import Link from "next/link";
 import { cn, formatTime, minutesToTimeString, timeStringToMinutes } from "@/lib/utils";
 import { getDayHours } from "@/lib/schedule";
+import { getServiceWindows, type ServiceWindow } from "@/lib/default-service";
+import type { WindowConfig } from "@/lib/default-service";
 
 type Appointment = {
   id: string;
@@ -36,6 +38,7 @@ type Settings = {
   lunchStart: string;
   lunchEnd: string;
   defaultServiceByWeekday?: Record<string, string>;
+  defaultServiceWindowsByWeekday?: Record<string, WindowConfig[]> | string;
   workScheduleByWeekday?: Record<string, { closed?: boolean; start?: string; end?: string }>;
 };
 
@@ -80,10 +83,12 @@ function classify(
 
 function buildSlotItems(
   settings: Settings,
-  slotMin: number,
+  windows: ServiceWindow[],
   appointments: Appointment[],
   hours: { start: string; end: string }
 ): SlotItem[] {
+  if (windows.length === 0) return [];
+
   const dayStart = timeStringToMinutes(hours.start);
   const dayEnd = timeStringToMinutes(hours.end);
   const lunchStart = timeStringToMinutes(settings.lunchStart);
@@ -100,12 +105,38 @@ function buildSlotItems(
     if (end > latest) latest = Math.ceil(end / 60) * 60;
   }
 
+  // Resolve which slotMin (and the next boundary, if any) applies at a given
+  // minute. Before working hours uses the first window's slot size, after the
+  // last window's, and inside-hours follows the configured per-window sizes.
+  function slotAt(min: number): { slotMin: number; nextBoundary: number | null } {
+    if (min < dayStart) {
+      return { slotMin: windows[0].service.durationMin, nextBoundary: dayStart };
+    }
+    if (min >= dayEnd) {
+      return { slotMin: windows[windows.length - 1].service.durationMin, nextBoundary: null };
+    }
+    const w = windows.find((w) => min >= w.startMin && min < w.endMin);
+    if (w) return { slotMin: w.service.durationMin, nextBoundary: w.endMin };
+    // Gap between windows — pick the next window's slotMin so the cursor
+    // can advance past the gap cleanly.
+    const upcoming = windows.find((w) => w.startMin > min);
+    return { slotMin: upcoming?.service.durationMin ?? 15, nextBoundary: upcoming?.startMin ?? null };
+  }
+
   const items: SlotItem[] = [];
   let cursor = earliest;
 
-  while (cursor + slotMin <= latest) {
-    const kind = classify(cursor, dayStart, dayEnd, lunchStart, lunchEnd);
+  while (cursor < latest) {
+    const { slotMin, nextBoundary } = slotAt(cursor);
+    if (cursor + slotMin > latest) break;
+    // Snap to the boundary if the current slot would straddle it — that way
+    // the next iteration picks up the new window's slot size cleanly.
+    if (nextBoundary !== null && cursor + slotMin > nextBoundary) {
+      cursor = nextBoundary;
+      continue;
+    }
 
+    const kind = classify(cursor, dayStart, dayEnd, lunchStart, lunchEnd);
     const slotEnd = cursor + slotMin;
     const startingHere = active.filter((a) => {
       const m = apptMinutes(a).start;
@@ -115,11 +146,11 @@ function buildSlotItems(
     items.push({ startMin: cursor, durMin: slotMin, appts: startingHere, kind });
 
     if (startingHere.length > 0) {
-      // Advance past the longest appointment in this slot so we don't
-      // generate empty rows for time already consumed by it.
       const maxEnd = Math.max(...startingHere.map((a) => apptMinutes(a).end));
       let next = cursor + slotMin;
-      while (next < maxEnd) next += slotMin;
+      while (next < maxEnd) {
+        next += slotAt(next).slotMin;
+      }
       cursor = next;
     } else {
       cursor += slotMin;
@@ -153,17 +184,17 @@ export function SlotList({
   const [showBefore, setShowBefore] = useState(false);
   const [showAfter, setShowAfter] = useState(false);
 
-  const weekday = String(date.getDay());
   const hours = getDayHours(date, settings);
-  const defaultServiceId = settings.defaultServiceByWeekday?.[weekday];
-  const defaultService = defaultServiceId
-    ? services.find((s) => s.id === defaultServiceId)
-    : undefined;
+  const windows = useMemo(
+    () => getServiceWindows(date.getDay(), hours, settings, services),
+    [date, hours, settings, services]
+  );
+  const hasService = windows.length > 0;
 
   const items = useMemo(() => {
-    if (!hours.open || !defaultService) return [];
-    return buildSlotItems(settings, defaultService.durationMin, appointments, hours);
-  }, [settings, defaultService, appointments, hours]);
+    if (!hours.open || !hasService) return [];
+    return buildSlotItems(settings, windows, appointments, hours);
+  }, [settings, windows, hasService, appointments, hours]);
 
   // Closed day per work schedule
   if (!hours.open) {
@@ -188,7 +219,7 @@ export function SlotList({
     );
   }
 
-  if (!defaultService) {
+  if (!hasService) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
         <SettingsIcon size={28} className="text-ink-300" />
@@ -233,16 +264,24 @@ export function SlotList({
     onCreateAt(d);
   }
 
+  // Header label: when a single service covers the whole day, show its name
+  // and slot size; with multiple windows, join the unique names and show the
+  // mixed slot sizes (e.g. "20/15 min por slot").
+  const uniqueServiceNames = Array.from(new Set(windows.map((w) => w.service.name)));
+  const uniqueSlotMins = Array.from(new Set(windows.map((w) => w.service.durationMin)));
+  const headerName = uniqueServiceNames.join(" · ");
+  const headerSlotLabel = uniqueSlotMins.join("/") + " min por slot";
+
   return (
     <div className="flex flex-1 flex-col overflow-hidden bg-card">
       {/* Header */}
       <div className="flex shrink-0 items-baseline justify-between border-b border-ink-200 px-4 py-2.5">
         <div>
           <h3 className="text-sm font-medium text-ink-900 sm:text-base">
-            Horários · {defaultService.name}
+            Horários · {headerName}
           </h3>
           <p className="text-[11px] text-ink-500">
-            {defaultService.durationMin} min por slot · {free} livres · {filled} ocupados
+            {headerSlotLabel} · {free} livres · {filled} ocupados
           </p>
         </div>
       </div>

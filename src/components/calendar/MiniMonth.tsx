@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn, isSameDay, isToday, timeStringToMinutes } from "@/lib/utils";
 import { getDayHours } from "@/lib/schedule";
+import { getServiceWindows, type WindowConfig } from "@/lib/default-service";
 
 type MiniAppt = {
   startsAt: string;
@@ -18,6 +19,7 @@ type Settings = {
   lunchStart: string;
   lunchEnd: string;
   defaultServiceByWeekday?: Record<string, string>;
+  defaultServiceWindowsByWeekday?: Record<string, WindowConfig[]> | string;
   workScheduleByWeekday?: Record<string, { closed?: boolean; start?: string; end?: string }>;
 };
 
@@ -64,18 +66,33 @@ function dayInfo(
   const hours = getDayHours(d, settings);
   if (!hours.open) return { closed: true };
 
-  const sid = settings.defaultServiceByWeekday?.[String(d.getDay())];
-  const svc = sid ? services.find((s) => s.id === sid) : undefined;
-  if (!svc) return { closed: true };
+  const windows = getServiceWindows(d.getDay(), hours, settings, services);
+  if (windows.length === 0) return { closed: true };
 
-  const slotMin = svc.durationMin;
   const dayStart = timeStringToMinutes(hours.start);
   const dayEnd = timeStringToMinutes(hours.end);
   const lunchStart = timeStringToMinutes(settings.lunchStart);
   const lunchEnd = timeStringToMinutes(settings.lunchEnd);
 
-  const morningTotal = Math.max(0, Math.floor((lunchStart - dayStart) / slotMin));
-  const afternoonTotal = Math.max(0, Math.floor((dayEnd - lunchEnd) / slotMin));
+  // Compute morning/afternoon capacity by summing slot counts of each window
+  // intersected with the corresponding range. Different windows can use
+  // different slot sizes (the niche "20 min before 6pm, 15 min after" case).
+  let morningTotal = 0;
+  let afternoonTotal = 0;
+  for (const w of windows) {
+    const ws = Math.max(w.startMin, dayStart);
+    const we = Math.min(w.endMin, dayEnd);
+    const mEnd = Math.min(lunchStart, we);
+    const mStart = Math.max(ws, dayStart);
+    if (mEnd > mStart) {
+      morningTotal += Math.floor((mEnd - mStart) / w.service.durationMin);
+    }
+    const aStart = Math.max(lunchEnd, ws);
+    const aEnd = Math.min(we, dayEnd);
+    if (aEnd > aStart) {
+      afternoonTotal += Math.floor((aEnd - aStart) / w.service.durationMin);
+    }
+  }
 
   let morningUsed = 0;
   let afternoonUsed = 0;
@@ -85,14 +102,12 @@ function dayInfo(
     const start = new Date(a.startsAt);
     if (!isSameDay(start, d)) continue;
     const startMin = start.getHours() * 60 + start.getMinutes();
-    // Ignore bookings outside working hours — they're valid bookings (the
-    // user explicitly forced them) but they don't consume one of the
-    // morning/afternoon slots that morningTotal/afternoonTotal count, so
-    // including them would make the `n|x` summary go negative.
     if (startMin < dayStart || startMin >= dayEnd) continue;
-    // Use the actual stored duration (endsAt - startsAt) rather than the
-    // service's current durationMin — services can be edited after a booking
-    // is made and the slot list trusts endsAt, so we should too.
+
+    // Use the booking's window slot size so a 15-min booking in a 20-min
+    // window still counts as 1 slot (not 0).
+    const w = windows.find((w) => startMin >= w.startMin && startMin < w.endMin);
+    const slotMin = w?.service.durationMin ?? windows[0].service.durationMin;
     const end = new Date(a.endsAt);
     const durMs = end.getTime() - start.getTime();
     const durMin = durMs > 0 ? durMs / 60_000 : slotMin;
