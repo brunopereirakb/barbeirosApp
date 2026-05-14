@@ -34,10 +34,16 @@ export function parseWindowsConfig(
 }
 
 /**
- * Resolve the service window list for a given weekday. Returns either the
- * user's per-time-window override (if any rows are configured for that day)
- * or a single window spanning the whole working day with the single-default
- * service. Returns [] when nothing is configured.
+ * Resolve the service window list for a given weekday.
+ *
+ * The single `defaultServiceByWeekday[weekday]` entry is the "everywhere
+ * else" service for that day; any per-time-window overrides for the same
+ * weekday slot in on top, and the gaps left between/around them are filled
+ * with the default. That way the barber can say "Tuesday is Corte 20min,
+ * except 18:15–21:00 do Corte 15min" without having to redeclare the
+ * morning/afternoon explicitly.
+ *
+ * Returns [] when neither default nor windows are configured.
  */
 export function getServiceWindows(
   weekday: number,
@@ -48,26 +54,52 @@ export function getServiceWindows(
   const dayStart = timeStringToMinutes(hours.start);
   const dayEnd = timeStringToMinutes(hours.end);
   const windowsConfig = parseWindowsConfig(settings.defaultServiceWindowsByWeekday);
-  const userWindows = windowsConfig[String(weekday)];
-
-  if (userWindows && userWindows.length > 0) {
-    return userWindows
-      .map((w) => {
-        const service = services.find((s) => s.id === w.serviceId);
-        if (!service) return null;
-        return {
-          startMin: timeStringToMinutes(w.start),
-          endMin: timeStringToMinutes(w.end),
-          service,
-        } as ServiceWindow;
-      })
-      .filter((w): w is ServiceWindow => w !== null)
-      .sort((a, b) => a.startMin - b.startMin);
-  }
+  const userWindowsRaw = windowsConfig[String(weekday)];
 
   const sid = settings.defaultServiceByWeekday?.[String(weekday)];
-  if (!sid) return [];
-  const svc = services.find((s) => s.id === sid);
-  if (!svc) return [];
-  return [{ startMin: dayStart, endMin: dayEnd, service: svc }];
+  const defaultSvc = sid ? services.find((s) => s.id === sid) ?? null : null;
+
+  // No user windows: just one window for the whole day with the default.
+  if (!userWindowsRaw || userWindowsRaw.length === 0) {
+    if (!defaultSvc) return [];
+    return [{ startMin: dayStart, endMin: dayEnd, service: defaultSvc }];
+  }
+
+  // Resolve user windows (drop ones whose service no longer exists), sort
+  // them, and clamp to the working hours.
+  const userWindows: ServiceWindow[] = userWindowsRaw
+    .map((w) => {
+      const service = services.find((s) => s.id === w.serviceId);
+      if (!service) return null;
+      return {
+        startMin: timeStringToMinutes(w.start),
+        endMin: timeStringToMinutes(w.end),
+        service,
+      } as ServiceWindow;
+    })
+    .filter((w): w is ServiceWindow => w !== null)
+    .sort((a, b) => a.startMin - b.startMin);
+
+  // Walk through [dayStart, dayEnd] in order, inserting each user window in
+  // turn and filling any preceding gap with the default service (when
+  // present). The cursor tracks the next minute we still need to cover.
+  const result: ServiceWindow[] = [];
+  let cursor = dayStart;
+  for (const w of userWindows) {
+    if (w.endMin <= dayStart) continue; // entirely before workday
+    if (w.startMin >= dayEnd) break; // entirely after workday — sorted, so stop
+    const start = Math.max(w.startMin, cursor);
+    const end = Math.min(w.endMin, dayEnd);
+    if (start > cursor && defaultSvc) {
+      result.push({ startMin: cursor, endMin: start, service: defaultSvc });
+    }
+    if (end > start) {
+      result.push({ startMin: start, endMin: end, service: w.service });
+    }
+    cursor = Math.max(cursor, end);
+  }
+  if (cursor < dayEnd && defaultSvc) {
+    result.push({ startMin: cursor, endMin: dayEnd, service: defaultSvc });
+  }
+  return result;
 }

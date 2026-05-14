@@ -435,7 +435,6 @@ function DayServiceRow({
           onChange={onSingleChange}
           allowEmpty
           emptyLabel="— sem serviço padrão —"
-          disabled={hasWindows}
           className="flex-1"
         />
         <button
@@ -460,13 +459,16 @@ function DayServiceRow({
         <div className="ml-[5.75rem] rounded-md border border-ink-200 bg-ink-50/40 p-2.5">
           <p className="mb-2 text-[11px] text-ink-500">
             Aplicar serviços diferentes em horários do mesmo dia. Cada
-            período usa a duração desse serviço como tamanho de slot. Deixa
-            sem períodos para usar apenas o serviço padrão acima.
+            período usa a duração desse serviço como tamanho de slot.{" "}
+            <span className="font-medium text-ink-600">
+              O resto do horário ({dayStart}–{dayEnd}) usa o serviço padrão
+              acima.
+            </span>
           </p>
           {windows.length === 0 ? (
             <p className="text-[11px] text-ink-400">
-              Sem períodos configurados — está a ser usado o serviço padrão
-              acima ({weekdayKey ? "" : ""}{dayStart}–{dayEnd}).
+              Sem períodos configurados — todo o dia usa o serviço padrão
+              acima.
             </p>
           ) : (
             <div className="space-y-1.5">
