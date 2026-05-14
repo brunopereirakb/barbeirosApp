@@ -85,6 +85,11 @@ function dayInfo(
     const start = new Date(a.startsAt);
     if (!isSameDay(start, d)) continue;
     const startMin = start.getHours() * 60 + start.getMinutes();
+    // Ignore bookings outside working hours — they're valid bookings (the
+    // user explicitly forced them) but they don't consume one of the
+    // morning/afternoon slots that morningTotal/afternoonTotal count, so
+    // including them would make the `n|x` summary go negative.
+    if (startMin < dayStart || startMin >= dayEnd) continue;
     // Use the actual stored duration (endsAt - startsAt) rather than the
     // service's current durationMin — services can be edited after a booking
     // is made and the slot list trusts endsAt, so we should too.
