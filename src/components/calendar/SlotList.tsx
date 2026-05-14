@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Plus,
   Coffee,
@@ -9,6 +9,8 @@ import {
   ChevronUp,
   Settings as SettingsIcon,
   UserX,
+  Search,
+  RotateCcw,
 } from "lucide-react";
 import Link from "next/link";
 import { cn, formatTime, minutesToTimeString, timeStringToMinutes } from "@/lib/utils";
@@ -185,11 +187,35 @@ export function SlotList({
   const [showAfter, setShowAfter] = useState(false);
 
   const hours = getDayHours(date, settings);
-  const windows = useMemo(
+  // Day-scoped override picked from the header dropdown. Lets the barber
+  // temporarily re-grid the day around a specific service without touching
+  // the per-weekday defaults. Cleared when the date changes.
+  const [overrideServiceId, setOverrideServiceId] = useState<string | null>(null);
+  useEffect(() => {
+    setOverrideServiceId(null);
+  }, [date]);
+
+  const configuredWindows = useMemo(
     () => getServiceWindows(date.getDay(), hours, settings, services),
     [date, hours, settings, services]
   );
+  const windows = useMemo<ServiceWindow[]>(() => {
+    if (overrideServiceId) {
+      const svc = services.find((s) => s.id === overrideServiceId);
+      if (svc) {
+        return [
+          {
+            startMin: timeStringToMinutes(hours.start),
+            endMin: timeStringToMinutes(hours.end),
+            service: svc,
+          },
+        ];
+      }
+    }
+    return configuredWindows;
+  }, [overrideServiceId, services, hours, configuredWindows]);
   const hasService = windows.length > 0;
+  const isOverriding = overrideServiceId !== null;
 
   const items = useMemo(() => {
     if (!hours.open || !hasService) return [];
@@ -264,24 +290,31 @@ export function SlotList({
     onCreateAt(d);
   }
 
-  // Header label: when a single service covers the whole day, show its name
-  // and slot size; with multiple windows, join the unique names and show the
-  // mixed slot sizes (e.g. "20/15 min por slot").
-  const uniqueServiceNames = Array.from(new Set(windows.map((w) => w.service.name)));
+  // Slot-size summary stays readable whether the day has 1 window or many.
   const uniqueSlotMins = Array.from(new Set(windows.map((w) => w.service.durationMin)));
-  const headerName = uniqueServiceNames.join(" · ");
   const headerSlotLabel = uniqueSlotMins.join("/") + " min por slot";
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden bg-card">
       {/* Header */}
-      <div className="flex shrink-0 items-baseline justify-between border-b border-ink-200 px-4 py-2.5">
-        <div>
-          <h3 className="text-sm font-medium text-ink-900 sm:text-base">
-            Horários · {headerName}
-          </h3>
+      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-ink-200 px-4 py-2.5">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <h3 className="shrink-0 text-sm font-medium text-ink-900 sm:text-base">
+              Horários ·
+            </h3>
+            <ServicePicker
+              services={services}
+              currentWindows={configuredWindows}
+              overrideServiceId={overrideServiceId}
+              onPick={setOverrideServiceId}
+            />
+          </div>
           <p className="text-[11px] text-ink-500">
             {headerSlotLabel} · {free} livres · {filled} ocupados
+            {isOverriding && (
+              <span className="ml-1 text-brand-600">· vista temporária</span>
+            )}
           </p>
         </div>
       </div>
@@ -603,6 +636,144 @@ function ApptRow({
             </button>
           )}
         </span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Searchable service picker shown in the slot-list header.
+ *
+ * Default view: shows the services configured for the day (single name when
+ * there's one window, "Configurado" when there are several). Clicking opens
+ * a popover with a search field and the full service list — picking a row
+ * overrides the slot grid for the rest of the visit. "Por defeito" reverts.
+ */
+function ServicePicker({
+  services,
+  currentWindows,
+  overrideServiceId,
+  onPick,
+}: {
+  services: Service[];
+  currentWindows: ServiceWindow[];
+  overrideServiceId: string | null;
+  onPick: (id: string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const popoverRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handler(e: MouseEvent) {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const overridden = services.find((s) => s.id === overrideServiceId);
+  const uniqueConfigured = Array.from(new Set(currentWindows.map((w) => w.service.name)));
+
+  // Label rule: override wins; else single configured name; else "Configurado".
+  let label: string;
+  if (overridden) label = `${overridden.name} (${overridden.durationMin} min)`;
+  else if (uniqueConfigured.length === 1) label = uniqueConfigured[0];
+  else if (uniqueConfigured.length > 1) label = "Configurado";
+  else label = "—";
+
+  const filtered = services.filter((s) => {
+    if (!query.trim()) return true;
+    return s.name.toLowerCase().includes(query.trim().toLowerCase());
+  });
+
+  return (
+    <div className="relative min-w-0 flex-1">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          "flex w-full max-w-[16rem] items-center gap-1.5 truncate rounded-md border px-2 py-1 text-left text-sm font-medium transition",
+          overridden
+            ? "border-brand-300 bg-brand-50 text-brand-800 hover:bg-brand-100"
+            : "border-ink-200 text-ink-800 hover:bg-ink-50"
+        )}
+      >
+        <span className="truncate">{label}</span>
+        <ChevronDown size={13} className={cn("shrink-0 transition", open && "rotate-180")} />
+      </button>
+
+      {open && (
+        <div
+          ref={popoverRef}
+          className="absolute left-0 top-full z-30 mt-1 w-72 overflow-hidden rounded-lg border border-ink-200 bg-card shadow-lg"
+        >
+          <div className="border-b border-ink-100 p-2">
+            <div className="relative">
+              <Search
+                size={13}
+                className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-ink-400"
+              />
+              <input
+                autoFocus
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Pesquisar serviço…"
+                className="w-full rounded-md border border-ink-200 bg-card py-1.5 pl-7 pr-2 text-sm outline-none focus:border-brand-400"
+              />
+            </div>
+          </div>
+          <div className="max-h-72 overflow-y-auto">
+            <button
+              type="button"
+              onClick={() => {
+                onPick(null);
+                setOpen(false);
+                setQuery("");
+              }}
+              className={cn(
+                "flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition hover:bg-ink-50",
+                !overrideServiceId && "bg-brand-50/60"
+              )}
+            >
+              <RotateCcw size={13} className="text-ink-500" />
+              <span className="flex-1 text-ink-700">Por defeito (configurado)</span>
+              {!overrideServiceId && <Check size={13} className="text-brand-600" />}
+            </button>
+            <div className="border-t border-ink-100" />
+            {filtered.length === 0 ? (
+              <p className="px-3 py-3 text-xs text-ink-400">Nenhum serviço encontrado</p>
+            ) : (
+              filtered.map((s) => {
+                const isSel = overrideServiceId === s.id;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => {
+                      onPick(s.id);
+                      setOpen(false);
+                      setQuery("");
+                    }}
+                    className={cn(
+                      "flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition hover:bg-ink-50",
+                      isSel && "bg-brand-50/60"
+                    )}
+                  >
+                    <span className="min-w-0 flex-1 truncate text-ink-800">{s.name}</span>
+                    <span className="shrink-0 text-[11px] text-ink-500">
+                      {s.durationMin} min
+                    </span>
+                    {isSel && <Check size={13} className="shrink-0 text-brand-600" />}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
