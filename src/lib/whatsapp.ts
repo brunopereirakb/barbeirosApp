@@ -1,4 +1,6 @@
-import { prisma } from "./db";
+// WhatsApp sender. No-history mode: we send (or "send" in mock) and return the
+// result, but we don't persist to MessageLog and don't console.log on success.
+// Failures still surface as { ok: false } to the caller.
 
 export interface SendMessageOptions {
   to: string;
@@ -12,7 +14,6 @@ export interface SendMessageResult {
   messageId?: string;
   error?: string;
   mode: "mock" | "real";
-  logId: string;
 }
 
 function normalizePhone(phone: string): string {
@@ -60,47 +61,16 @@ export async function sendWhatsApp(opts: SendMessageOptions): Promise<SendMessag
   const phone = normalizePhone(opts.to);
 
   if (mode === "mock") {
-    const log = await prisma.messageLog.create({
-      data: {
-        userId: opts.tenantId || null,
-        channel: "whatsapp",
-        recipient: phone,
-        content: opts.body,
-        status: "mocked",
-        context: opts.context ? JSON.stringify(opts.context) : null,
-      },
-    });
-    console.log(`[WhatsApp MOCK] → ${phone}: ${opts.body.substring(0, 80)}...`);
-    return { ok: true, messageId: `mock_${log.id}`, mode: "mock", logId: log.id };
+    // Mock mode: pretend it succeeded. No DB write, no console line.
+    return { ok: true, messageId: `mock_${Date.now()}`, mode: "mock" };
   }
 
   try {
-    const { messageId } = await sendViaTwilio(opts);
-    const log = await prisma.messageLog.create({
-      data: {
-        userId: opts.tenantId || null,
-        channel: "whatsapp",
-        recipient: phone,
-        content: opts.body,
-        status: "sent",
-        context: JSON.stringify({ ...opts.context, twilioSid: messageId }),
-      },
-    });
-    return { ok: true, messageId, mode: "real", logId: log.id };
+    const { messageId } = await sendViaTwilio({ ...opts, to: phone });
+    return { ok: true, messageId, mode: "real" };
   } catch (e) {
     const error = e instanceof Error ? e.message : String(e);
-    const log = await prisma.messageLog.create({
-      data: {
-        userId: opts.tenantId || null,
-        channel: "whatsapp",
-        recipient: phone,
-        content: opts.body,
-        status: "failed",
-        context: JSON.stringify({ ...opts.context, error }),
-      },
-    });
-    console.error(`[WhatsApp REAL] falhou para ${phone}: ${error}`);
-    return { ok: false, error, mode: "real", logId: log.id };
+    return { ok: false, error, mode: "real" };
   }
 }
 

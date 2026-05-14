@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { formatTime, durationLabel, formatDate } from "@/lib/utils";
-import { Phone, MessageCircle, Trash2, Check, X, ListChecks } from "lucide-react";
+import { Phone, MessageCircle, Check, X, ListChecks } from "lucide-react";
 
 type Appointment = {
   id: string;
@@ -35,6 +35,8 @@ export function AppointmentDetailModal({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [working, setWorking] = useState(false);
   const [cascadeStarted, setCascadeStarted] = useState(false);
+  const [reminderState, setReminderState] = useState<"idle" | "sent" | "failed">("idle");
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (showCancel) {
@@ -44,7 +46,6 @@ export function AppointmentDetailModal({
         .then((r) => r.json())
         .then((data: WaitlistMatch[]) => {
           setMatches(data);
-          // Pré-selecionar todos
           setSelectedIds(new Set(data.map((m) => m.id)));
         });
     }
@@ -65,28 +66,35 @@ export function AppointmentDetailModal({
   }
 
   async function sendReminder() {
+    if (working) return;
     setWorking(true);
+    setReminderState("idle");
     try {
       const r = await fetch("/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ type: "reminder", clientId: appointment.client.id, appointmentId: appointment.id }),
       });
-      const data = await r.json();
-      if (data.ok) {
-        alert(`Lembrete enviado (modo ${data.mode}). Vê em /mensagens.`);
-      } else {
-        alert(`Falhou: ${data.error}`);
-      }
+      const data = await r.json().catch(() => ({}));
+      setReminderState(r.ok && data.ok ? "sent" : "failed");
+    } catch {
+      setReminderState("failed");
     } finally {
       setWorking(false);
     }
   }
 
   async function cancelOnly() {
+    if (working) return;
     setWorking(true);
+    setError("");
     try {
-      await fetch(`/api/appointments/${appointment.id}`, { method: "DELETE" });
+      const r = await fetch(`/api/appointments/${appointment.id}`, { method: "DELETE" });
+      if (!r.ok) {
+        const data = await r.json().catch(() => ({}));
+        setError(data.error || `Não foi possível cancelar (${r.status})`);
+        return;
+      }
       onChanged();
     } finally {
       setWorking(false);
@@ -94,20 +102,26 @@ export function AppointmentDetailModal({
   }
 
   async function cancelWithCascade() {
+    if (working) return;
     if (selectedIds.size === 0) {
       await cancelOnly();
       return;
     }
     setWorking(true);
+    setError("");
     try {
       const candidates = Array.from(selectedIds).join(",");
-      const r = await fetch(`/api/appointments/${appointment.id}?cascade=true&candidates=${candidates}`, {
-        method: "DELETE",
-      });
-      const data = await r.json();
+      const r = await fetch(
+        `/api/appointments/${appointment.id}?cascade=true&candidates=${candidates}`,
+        { method: "DELETE" }
+      );
+      if (!r.ok) {
+        const data = await r.json().catch(() => ({}));
+        setError(data.error || `Não foi possível cancelar (${r.status})`);
+        return;
+      }
       setCascadeStarted(true);
       setTimeout(() => onChanged(), 1500);
-      console.log("Cascata iniciada:", data);
     } finally {
       setWorking(false);
     }
@@ -173,6 +187,10 @@ export function AppointmentDetailModal({
               </div>
             )}
 
+            {error && (
+              <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+            )}
+
             <div className="flex flex-wrap justify-end gap-2 border-t border-ink-200 pt-3">
               <Button variant="ghost" onClick={() => setShowCancel(false)}>
                 Voltar
@@ -207,15 +225,27 @@ export function AppointmentDetailModal({
         <Row label="Duração" value={durationLabel(appointment.service.durationMin)} />
         <Row
           label="Estado"
-          value={
-            <StatusBadge status={appointment.status} />
-          }
+          value={<StatusBadge status={appointment.status} />}
         />
         {appointment.notes && (
           <div className="rounded-md border border-ink-200 bg-card p-3">
             <div className="mb-0.5 text-[11px] font-medium uppercase tracking-wider text-ink-400">Notas</div>
             <div className="text-sm text-ink-700">{appointment.notes}</div>
           </div>
+        )}
+
+        {reminderState === "sent" && (
+          <p className="rounded-md bg-green-50 px-3 py-2 text-xs text-green-700">
+            ✓ Lembrete enviado.
+          </p>
+        )}
+        {reminderState === "failed" && (
+          <p className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">
+            Não foi possível enviar o lembrete.
+          </p>
+        )}
+        {error && (
+          <p className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>
         )}
 
         <div className="flex flex-wrap gap-2 border-t border-ink-200 pt-3">

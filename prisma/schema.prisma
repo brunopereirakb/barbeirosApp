@@ -26,6 +26,7 @@ model User {
   cascadeOffers CascadeOffer[]
   messageLogs  MessageLog[]
   dayNotes     DayNote[]
+  passwordResetTokens PasswordResetToken[]
 }
 
 model Subscription {
@@ -183,6 +184,21 @@ model DayNote {
 
   @@unique([userId, date])
   @@index([userId])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // SHA-256 hash of the raw token sent in the email. We never store the raw
+  // value so a DB leak can't be used to perform password resets.
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model PlanDefinition {

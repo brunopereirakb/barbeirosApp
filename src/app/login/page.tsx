@@ -4,13 +4,14 @@ import { useState, useEffect } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Scissors, Loader2 } from "lucide-react";
+import { Scissors, Loader2, Eye, EyeOff } from "lucide-react";
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
@@ -18,6 +19,8 @@ function LoginForm() {
   useEffect(() => {
     if (searchParams.get("registered") === "1") {
       setSuccess("Conta criada com sucesso! Pode agora iniciar sessão.");
+    } else if (searchParams.get("reset") === "1") {
+      setSuccess("Palavra-passe alterada. Pode agora iniciar sessão.");
     }
   }, [searchParams]);
 
@@ -28,7 +31,7 @@ function LoginForm() {
     setLoading(true);
 
     const result = await signIn("credentials", {
-      email,
+      email: email.trim().toLowerCase(),
       password,
       redirect: false,
     });
@@ -52,21 +55,41 @@ function LoginForm() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
+          autoComplete="email"
           className="w-full rounded-lg border border-ink-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
           placeholder="nome@salao.pt"
         />
       </div>
 
       <div className="space-y-1">
-        <label className="block text-sm font-medium text-ink-700">Palavra-passe</label>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          className="w-full rounded-lg border border-ink-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-          placeholder="••••••••"
-        />
+        <div className="flex items-baseline justify-between">
+          <label className="block text-sm font-medium text-ink-700">Palavra-passe</label>
+          <Link
+            href="/forgot-password"
+            className="text-xs text-brand-600 hover:underline"
+          >
+            Esqueci-me
+          </Link>
+        </div>
+        <div className="relative">
+          <input
+            type={showPassword ? "text" : "password"}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            autoComplete="current-password"
+            className="w-full rounded-lg border border-ink-300 px-3 py-2 pr-10 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+            placeholder="••••••••"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-ink-400 hover:text-ink-700"
+            aria-label={showPassword ? "Esconder palavra-passe" : "Mostrar palavra-passe"}
+          >
+            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+          </button>
+        </div>
       </div>
 
       {error && (

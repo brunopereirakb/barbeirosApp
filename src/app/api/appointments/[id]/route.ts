@@ -48,12 +48,32 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const triggerCascade = url.searchParams.get("cascade") === "true";
   const candidatesParam = url.searchParams.get("candidates");
 
-  const appointment = await prisma.appointment.findFirstOrThrow({
+  // Scope the lookup by tenant so we never touch another tenant's row, and
+  // return a clean 404 instead of throwing.
+  const appointment = await prisma.appointment.findFirst({
     where: { id, userId: tenantId },
     include: { service: true },
   });
+  if (!appointment) {
+    return NextResponse.json({ error: "Marcação não encontrada" }, { status: 404 });
+  }
 
-  await prisma.appointment.update({ where: { id }, data: { status: "cancelled" } });
+  // Idempotent: if already cancelled, don't update again and don't fire another
+  // cascade. Returning the same shape avoids surprising clients that retry.
+  if (appointment.status === "cancelled") {
+    return NextResponse.json({ cancelled: true, alreadyCancelled: true });
+  }
+
+  // updateMany scoped to (id, userId, current status not cancelled) → if a
+  // concurrent request already flipped it, our update affects 0 rows and we
+  // skip the cascade. This is the safeguard against double-cancellations.
+  const result = await prisma.appointment.updateMany({
+    where: { id, userId: tenantId, status: { not: "cancelled" } },
+    data: { status: "cancelled" },
+  });
+  if (result.count === 0) {
+    return NextResponse.json({ cancelled: true, alreadyCancelled: true });
+  }
 
   if (triggerCascade) {
     const slot = {
@@ -64,11 +84,11 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const candidateIds = candidatesParam ? candidatesParam.split(",").filter(Boolean) : [];
     if (candidateIds.length === 0) {
       const eligible = await findEligibleWaitlist(slot, tenantId);
-      const result = await startCascade(slot, eligible.map((e: { id: string }) => e.id), tenantId);
-      return NextResponse.json({ cancelled: true, cascade: result });
+      const cascade = await startCascade(slot, eligible.map((e: { id: string }) => e.id), tenantId);
+      return NextResponse.json({ cancelled: true, cascade });
     } else {
-      const result = await startCascade(slot, candidateIds, tenantId);
-      return NextResponse.json({ cancelled: true, cascade: result });
+      const cascade = await startCascade(slot, candidateIds, tenantId);
+      return NextResponse.json({ cancelled: true, cascade });
     }
   }
 

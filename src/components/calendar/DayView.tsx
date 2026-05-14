@@ -8,6 +8,7 @@ import { RecurringAppointmentModal } from "./RecurringAppointmentModal";
 import { MiniMonth } from "./MiniMonth";
 import { DayNoteCard } from "./DayNoteCard";
 import { SlotList } from "./SlotList";
+import { ResizableSplit } from "./ResizableSplit";
 
 type Appointment = {
   id: string;
@@ -287,36 +288,37 @@ export function DayView() {
         </button>
       </div>
 
-      {/* Dashboard (main) — mini-month + notes | slots */}
+      {/* Dashboard (main) — mini-month + notes | slots, divider is draggable on desktop */}
       {view === "dashboard" && (
-        <div className="grid flex-1 grid-cols-1 overflow-hidden md:grid-cols-[380px_1fr]">
-          {/* Left rail: mini-month + day notes */}
-          <aside className="flex shrink-0 flex-col gap-3 overflow-y-auto border-b border-ink-200 bg-ink-50/60 p-3 md:border-b-0 md:border-r">
-            <MiniMonth
-              selected={date}
-              onSelectDay={setDate}
-              settings={settings}
-              services={services}
-            />
-            <DayNoteCard date={date} />
-          </aside>
-
-          {/* Right: slot list */}
-          {settings ? (
-            <SlotList
-              date={date}
-              appointments={appointments}
-              settings={settings}
-              services={services}
-              onCreateAt={(d) => setNewAppointment({ startsAt: d })}
-              onSelectAppointment={setSelectedAppointment}
-            />
-          ) : (
-            <div className="flex flex-1 items-center justify-center text-sm text-ink-400">
-              A carregar…
-            </div>
-          )}
-        </div>
+        <ResizableSplit
+          left={
+            <>
+              <MiniMonth
+                selected={date}
+                onSelectDay={setDate}
+                settings={settings}
+                services={services}
+              />
+              <DayNoteCard date={date} />
+            </>
+          }
+          right={
+            settings ? (
+              <SlotList
+                date={date}
+                appointments={appointments}
+                settings={settings}
+                services={services}
+                onCreateAt={(d) => setNewAppointment({ startsAt: d })}
+                onSelectAppointment={setSelectedAppointment}
+              />
+            ) : (
+              <div className="flex flex-1 items-center justify-center text-sm text-ink-400">
+                A carregar…
+              </div>
+            )
+          }
+        />
       )}
 
       {/* Week view */}

@@ -1,24 +1,24 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Scissors, Loader2, Eye, EyeOff, Check, X } from "lucide-react";
 import { PASSWORD_REQUIREMENTS, validatePassword } from "@/lib/password";
 
-export default function RegisterPage() {
+export default function ResetPasswordPage() {
   const router = useRouter();
-  const [form, setForm] = useState({ name: "", email: "", password: "", confirm: "" });
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const params = useParams<{ token: string }>();
+  const token = params?.token ?? "";
 
-  const pwCheck = validatePassword(form.password);
-  const passwordMatch = form.confirm.length > 0 && form.password === form.confirm;
-  const canSubmit =
-    form.name.trim().length > 0 &&
-    form.email.trim().length > 0 &&
-    pwCheck.ok &&
-    passwordMatch;
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const pwCheck = validatePassword(password);
+  const passwordMatch = confirm.length > 0 && password === confirm;
+  const canSubmit = pwCheck.ok && passwordMatch;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -28,25 +28,25 @@ export default function RegisterPage() {
       setError(`Palavra-passe inválida: ${pwCheck.errors.join(", ")}`);
       return;
     }
-    if (form.password !== form.confirm) {
+    if (!passwordMatch) {
       setError("As palavras-passe não coincidem.");
       return;
     }
 
     setLoading(true);
-    const res = await fetch("/api/auth/register", {
+    const res = await fetch("/api/auth/password-reset/confirm", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: form.name, email: form.email, password: form.password }),
+      body: JSON.stringify({ token, password }),
     });
+    const data = await res.json().catch(() => ({}));
     setLoading(false);
 
-    if (res.ok) {
-      router.push("/login?registered=1");
-    } else {
-      const data = await res.json().catch(() => ({}));
-      setError(data.error || "Erro ao criar conta.");
+    if (!res.ok) {
+      setError(data.error || "Não foi possível redefinir a palavra-passe.");
+      return;
     }
+    router.push("/login?reset=1");
   }
 
   return (
@@ -57,46 +57,22 @@ export default function RegisterPage() {
             <Scissors size={28} />
           </div>
           <div className="text-center">
-            <h1 className="text-xl font-semibold text-ink-900">Criar conta</h1>
-            <p className="mt-1 text-sm text-ink-500">Comece a gerir o seu salão hoje</p>
+            <h1 className="text-xl font-semibold text-ink-900">Nova palavra-passe</h1>
+            <p className="mt-1 text-sm text-ink-500">Escolhe uma nova palavra-passe para a tua conta.</p>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-ink-700">Nome do salão</label>
-            <input
-              type="text"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              required
-              className="w-full rounded-lg border border-ink-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-              placeholder="O Meu Salão"
-            />
-          </div>
-
-          <div className="space-y-1">
-            <label className="block text-sm font-medium text-ink-700">Email</label>
-            <input
-              type="email"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              required
-              autoComplete="email"
-              className="w-full rounded-lg border border-ink-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-              placeholder="nome@salao.pt"
-            />
-          </div>
-
-          <div className="space-y-1">
             <label className="block text-sm font-medium text-ink-700">Palavra-passe</label>
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 required
                 autoComplete="new-password"
+                autoFocus
                 className="w-full rounded-lg border border-ink-300 px-3 py-2 pr-10 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
                 placeholder="••••••••"
               />
@@ -109,10 +85,10 @@ export default function RegisterPage() {
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
-            {form.password.length > 0 && (
+            {password.length > 0 && (
               <ul className="mt-1 space-y-0.5">
                 {PASSWORD_REQUIREMENTS.map((req) => {
-                  const passed = req.test(form.password);
+                  const passed = req.test(password);
                   return (
                     <li
                       key={req.label}
@@ -133,14 +109,14 @@ export default function RegisterPage() {
             <label className="block text-sm font-medium text-ink-700">Confirmar palavra-passe</label>
             <input
               type={showPassword ? "text" : "password"}
-              value={form.confirm}
-              onChange={(e) => setForm({ ...form, confirm: e.target.value })}
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
               required
               autoComplete="new-password"
               className="w-full rounded-lg border border-ink-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
               placeholder="••••••••"
             />
-            {form.confirm.length > 0 && (
+            {confirm.length > 0 && (
               <p
                 className={`text-[11px] ${
                   passwordMatch ? "text-brand-600" : "text-red-600"
@@ -161,16 +137,16 @@ export default function RegisterPage() {
             className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-600 disabled:opacity-60"
           >
             {loading && <Loader2 size={16} className="animate-spin" />}
-            Criar conta
+            Guardar nova palavra-passe
           </button>
-        </form>
 
-        <p className="text-center text-sm text-ink-500">
-          Já tem conta?{" "}
-          <Link href="/login" className="font-medium text-brand-600 hover:underline">
-            Iniciar sessão
+          <Link
+            href="/login"
+            className="block text-center text-xs text-ink-500 hover:text-ink-700"
+          >
+            Voltar ao início de sessão
           </Link>
-        </p>
+        </form>
       </div>
     </div>
   );
