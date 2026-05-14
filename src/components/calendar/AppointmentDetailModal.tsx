@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { formatTime, durationLabel, formatDate } from "@/lib/utils";
-import { Phone, MessageCircle, Check, X, ListChecks, Pencil, Save } from "lucide-react";
+import { Phone, MessageCircle, Check, X, ListChecks, Pencil, Save, AlertCircle } from "lucide-react";
 
 type Appointment = {
   id: string;
@@ -11,7 +11,14 @@ type Appointment = {
   endsAt: string;
   status: "pending" | "confirmed" | "done" | "cancelled" | "no_show";
   notes: string | null;
-  client: { id: string; code: number | null; name: string; phone: string | null };
+  noteForClient: string | null;
+  client: {
+    id: string;
+    code: number | null;
+    name: string;
+    phone: string | null;
+    notes: string | null;
+  };
   service: { id: string; name: string; durationMin: number };
 };
 
@@ -52,6 +59,7 @@ export function AppointmentDetailModal({
   );
   const [editServiceId, setEditServiceId] = useState(appointment.service.id);
   const [editNotes, setEditNotes] = useState(appointment.notes ?? "");
+  const [editNoteForClient, setEditNoteForClient] = useState(appointment.noteForClient ?? "");
   const [overlapConflict, setOverlapConflict] = useState<string | null>(null);
 
   useEffect(() => {
@@ -92,6 +100,7 @@ export function AppointmentDetailModal({
           startsAt: newStart.toISOString(),
           serviceId: editServiceId,
           notes: editNotes || null,
+          noteForClient: editNoteForClient || null,
           allowOverlap: allowOverlap || undefined,
         }),
       });
@@ -293,6 +302,21 @@ export function AppointmentDetailModal({
           )}
         </div>
 
+        {/* Nota pessoal do cliente — vinda do registo dele. Deve ser sempre
+            destacada porque pode incluir condições físicas ou avisos
+            importantes para qualquer marcação. */}
+        {appointment.client.notes?.trim() && (
+          <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            <AlertCircle size={14} className="mt-0.5 shrink-0" />
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">
+                Nota do cliente
+              </p>
+              <p className="whitespace-pre-wrap text-xs">{appointment.client.notes}</p>
+            </div>
+          </div>
+        )}
+
         {editing ? (
           <div className="space-y-3 rounded-md border border-brand-200 bg-brand-50/30 p-3">
             <div className="grid grid-cols-2 gap-2">
@@ -341,13 +365,27 @@ export function AppointmentDetailModal({
               )}
             </label>
             <label className="block text-xs text-ink-600">
-              Notas
+              Nota interna
               <textarea
                 value={editNotes}
                 onChange={(e) => setEditNotes(e.target.value)}
                 rows={2}
+                placeholder="Detalhe que fica só para ti"
                 className="mt-0.5 w-full rounded-md border border-ink-300 px-2 py-1.5 text-sm"
               />
+            </label>
+            <label className="block text-xs text-ink-600">
+              Mensagem para o cliente
+              <textarea
+                value={editNoteForClient}
+                onChange={(e) => setEditNoteForClient(e.target.value)}
+                rows={2}
+                placeholder="Ex.: chegar 5 min antes, traga corte de referência…"
+                className="mt-0.5 w-full rounded-md border border-ink-300 px-2 py-1.5 text-sm"
+              />
+              <span className="mt-0.5 block text-[10px] text-ink-400">
+                Enviada no lembrete por WhatsApp.
+              </span>
             </label>
 
             {overlapConflict && (
@@ -397,8 +435,16 @@ export function AppointmentDetailModal({
             />
             {appointment.notes && (
               <div className="rounded-md border border-ink-200 bg-card p-3">
-                <div className="mb-0.5 text-[11px] font-medium uppercase tracking-wider text-ink-400">Notas</div>
-                <div className="text-sm text-ink-700">{appointment.notes}</div>
+                <div className="mb-0.5 text-[11px] font-medium uppercase tracking-wider text-ink-400">Nota interna</div>
+                <div className="whitespace-pre-wrap text-sm text-ink-700">{appointment.notes}</div>
+              </div>
+            )}
+            {appointment.noteForClient && (
+              <div className="rounded-md border border-brand-200 bg-brand-50/50 p-3">
+                <div className="mb-0.5 flex items-center gap-1 text-[11px] font-medium uppercase tracking-wider text-brand-700">
+                  <MessageCircle size={10} /> Mensagem para o cliente
+                </div>
+                <div className="whitespace-pre-wrap text-sm text-ink-800">{appointment.noteForClient}</div>
               </div>
             )}
           </>

@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
           serviceName: appt.service.name,
           when: appt.startsAt,
           salonName,
+          noteForClient: appt.noteForClient,
         }),
         context: { type: "reminder", appointmentId: appt.id },
         tenantId,

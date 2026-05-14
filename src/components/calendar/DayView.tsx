@@ -18,7 +18,14 @@ type Appointment = {
   endsAt: string;
   status: "pending" | "confirmed" | "done" | "cancelled" | "no_show";
   notes: string | null;
-  client: { id: string; code: number | null; name: string; phone: string | null };
+  noteForClient: string | null;
+  client: {
+    id: string;
+    code: number | null;
+    name: string;
+    phone: string | null;
+    notes: string | null;
+  };
   service: { id: string; name: string; durationMin: number };
 };
 

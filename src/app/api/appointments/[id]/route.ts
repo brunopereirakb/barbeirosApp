@@ -25,6 +25,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const data: Record<string, unknown> = {};
   if (body.status) data.status = body.status;
   if (body.notes !== undefined) data.notes = body.notes;
+  if (body.noteForClient !== undefined) data.noteForClient = body.noteForClient || null;
   if (body.clientId !== undefined) {
     const c = await prisma.client.findFirst({ where: { id: body.clientId, userId: tenantId } });
     if (!c) return NextResponse.json({ error: "Cliente não encontrado" }, { status: 404 });

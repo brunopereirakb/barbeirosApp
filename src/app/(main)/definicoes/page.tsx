@@ -316,8 +316,14 @@ export default function SettingsPage() {
                 <code className="rounded bg-ink-100 px-1">{"{servico}"}</code>{" "}
                 <code className="rounded bg-ink-100 px-1">{"{hora}"}</code>{" "}
                 <code className="rounded bg-ink-100 px-1">{"{data}"}</code>{" "}
-                <code className="rounded bg-ink-100 px-1">{"{salao}"}</code>. Deixa em branco para usar
-                o template por defeito.
+                <code className="rounded bg-ink-100 px-1">{"{salao}"}</code>{" "}
+                <code className="rounded bg-ink-100 px-1">{"{notaCliente}"}</code>.
+                Deixa em branco para usar o template por defeito.
+                <br />
+                <span className="text-ink-400">
+                  {"{notaCliente}"} é o campo &quot;Mensagem para o cliente&quot; de cada marcação;
+                  se não usares o placeholder mas a marcação tiver mensagem, ela é anexada no fim.
+                </span>
               </p>
             </Field>
           </Section>

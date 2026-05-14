@@ -96,6 +96,10 @@ model Appointment {
   endsAt      DateTime
   status      String   @default("pending") // pending | confirmed | done | cancelled | no_show
   notes       String?
+  // Optional extra text appended to the reminder message sent to the client.
+  // `notes` stays private; this one is what the client actually receives,
+  // exposed via the {notaCliente} template placeholder.
+  noteForClient String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

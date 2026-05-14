@@ -2,10 +2,16 @@
 import { useState, useEffect } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
-import { UserPlus } from "lucide-react";
+import { UserPlus, AlertCircle } from "lucide-react";
 import { durationLabel } from "@/lib/utils";
 
-type Client = { id: string; code: number | null; name: string; phone: string | null };
+type Client = {
+  id: string;
+  code: number | null;
+  name: string;
+  phone: string | null;
+  notes: string | null;
+};
 type Service = { id: string; name: string; durationMin: number; category: string | null };
 
 export function NewAppointmentModal({
@@ -38,6 +44,7 @@ export function NewAppointmentModal({
     startsAt.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })
   );
   const [notes, setNotes] = useState("");
+  const [noteForClient, setNoteForClient] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   // Tracks an "overlap" 409 response so the user can confirm and retry.
@@ -126,6 +133,7 @@ export function NewAppointmentModal({
           serviceId,
           startsAt: start.toISOString(),
           notes: notes || null,
+          noteForClient: noteForClient || null,
           status: "confirmed",
           allowOverlap: allowOverlap || undefined,
         }),
@@ -307,16 +315,53 @@ export function NewAppointmentModal({
           </div>
         </div>
 
-        {/* Notas */}
+        {/* Nota pessoal do cliente — vinda do registo do cliente. Aparece
+            sempre que ele tem uma marcação, para lembrar condições/etc. */}
+        {(() => {
+          const selectedClient = clients.find((c) => c.id === clientId);
+          if (!selectedClient?.notes?.trim()) return null;
+          return (
+            <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              <AlertCircle size={14} className="mt-0.5 shrink-0" />
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">
+                  Nota do cliente
+                </p>
+                <p className="whitespace-pre-wrap text-xs">{selectedClient.notes}</p>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Notas internas */}
         <div>
-          <label className="mb-1 block text-xs font-medium text-ink-600">Notas (opcional)</label>
+          <label className="mb-1 block text-xs font-medium text-ink-600">
+            Nota interna (opcional)
+          </label>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             rows={2}
-            placeholder="Algum detalhe sobre esta marcação..."
+            placeholder="Detalhe que fica só para ti..."
             className="w-full rounded-md border border-ink-300 px-3 py-2 text-sm"
           />
+        </div>
+
+        {/* Mensagem extra incluída no lembrete enviado ao cliente */}
+        <div>
+          <label className="mb-1 block text-xs font-medium text-ink-600">
+            Mensagem para o cliente (opcional)
+          </label>
+          <textarea
+            value={noteForClient}
+            onChange={(e) => setNoteForClient(e.target.value)}
+            rows={2}
+            placeholder="Ex.: traga corte de referência, chegar 5 min antes..."
+            className="w-full rounded-md border border-ink-300 px-3 py-2 text-sm"
+          />
+          <p className="mt-0.5 text-[11px] text-ink-400">
+            Anexada ao lembrete por WhatsApp ({"{notaCliente}"} no template).
+          </p>
         </div>
 
         {error && (

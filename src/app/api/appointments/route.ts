@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
   if (response) return response;
 
   const body = await req.json();
-  const { clientId, serviceId, startsAt, notes, status, allowOverlap } = body;
+  const { clientId, serviceId, startsAt, notes, noteForClient, status, allowOverlap } = body;
 
   if (!clientId || !serviceId || !startsAt) {
     return NextResponse.json(
@@ -96,6 +96,7 @@ export async function POST(req: NextRequest) {
           endsAt: end,
           status: status || "confirmed",
           notes: notes || null,
+          noteForClient: noteForClient || null,
         },
         include: { client: true, service: true },
       });

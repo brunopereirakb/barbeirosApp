@@ -86,20 +86,50 @@ Se precisar de remarcar, responda a esta mensagem. Até amanhã!`;
 /**
  * Render the 24h reminder by substituting placeholders into the salon's
  * configured template (or the default if none is set).
+ *
+ * `noteForClient` is the per-appointment public message — substituted into
+ * `{notaCliente}` when the template uses it. When the template does NOT
+ * use the placeholder but a note exists, it's appended as a trailing line
+ * so it isn't silently swallowed. Empty notes never produce blank lines.
  */
 export function renderReminderTemplate(
   template: string | null | undefined,
-  vars: { clientName: string; serviceName: string; when: Date; salonName: string }
+  vars: {
+    clientName: string;
+    serviceName: string;
+    when: Date;
+    salonName: string;
+    noteForClient?: string | null;
+  }
 ): string {
   const tpl = template?.trim() ? template : DEFAULT_REMINDER_TEMPLATE;
   const time = vars.when.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" });
   const date = vars.when.toLocaleDateString("pt-PT", { weekday: "long", day: "numeric", month: "long" });
-  return tpl
+  const note = vars.noteForClient?.trim() ?? "";
+
+  // If the placeholder is on its own line and the note is empty, drop the
+  // whole line so the reminder doesn't ship with awkward blank lines.
+  const hasPlaceholder = tpl.includes("{notaCliente}");
+  let withoutNote = tpl;
+  if (note === "") {
+    withoutNote = withoutNote.replace(/^[ \t]*\{notaCliente\}[ \t]*\n?/gm, "");
+    withoutNote = withoutNote.replaceAll("{notaCliente}", "");
+  }
+
+  let out = withoutNote
     .replaceAll("{cliente}", vars.clientName)
     .replaceAll("{servico}", vars.serviceName)
     .replaceAll("{hora}", time)
     .replaceAll("{data}", date)
-    .replaceAll("{salao}", vars.salonName);
+    .replaceAll("{salao}", vars.salonName)
+    .replaceAll("{notaCliente}", note);
+
+  // When the user hasn't put {notaCliente} in their template but the booking
+  // has a note, append it as a P.S. so it doesn't disappear.
+  if (note && !hasPlaceholder) {
+    out = `${out.trimEnd()}\n\n📝 ${note}`;
+  }
+  return out;
 }
 
 export const messageTemplates = {
