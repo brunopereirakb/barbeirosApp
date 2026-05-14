@@ -128,32 +128,37 @@ function buildSlotItems(
 
   while (cursor < latest) {
     const { slotMin, nextBoundary } = slotAt(cursor);
-    if (cursor + slotMin > latest) break;
-    // Snap to the boundary if the current slot would straddle it — that way
-    // the next iteration picks up the new window's slot size cleanly.
-    if (nextBoundary !== null && cursor + slotMin > nextBoundary) {
-      cursor = nextBoundary;
-      continue;
-    }
+    // Truncate the slot to the next window boundary instead of skipping
+    // past it — otherwise the leftover gap (e.g. 18:00–18:15 when a
+    // 20-min default meets a 18:15+ 15-min override) would silently
+    // disappear from the list.
+    const effectiveSlotMin =
+      nextBoundary !== null && cursor + slotMin > nextBoundary
+        ? nextBoundary - cursor
+        : slotMin;
+    if (effectiveSlotMin <= 0) break;
+    if (cursor + effectiveSlotMin > latest) break;
 
     const kind = classify(cursor, dayStart, dayEnd, lunchStart, lunchEnd);
-    const slotEnd = cursor + slotMin;
+    const slotEnd = cursor + effectiveSlotMin;
     const startingHere = active.filter((a) => {
       const m = apptMinutes(a).start;
       return m >= cursor && m < slotEnd;
     });
 
-    items.push({ startMin: cursor, durMin: slotMin, appts: startingHere, kind });
+    items.push({ startMin: cursor, durMin: effectiveSlotMin, appts: startingHere, kind });
 
     if (startingHere.length > 0) {
       const maxEnd = Math.max(...startingHere.map((a) => apptMinutes(a).end));
-      let next = cursor + slotMin;
+      let next = cursor + effectiveSlotMin;
       while (next < maxEnd) {
-        next += slotAt(next).slotMin;
+        const step = slotAt(next).slotMin;
+        if (step <= 0) break;
+        next += step;
       }
       cursor = next;
     } else {
-      cursor += slotMin;
+      cursor += effectiveSlotMin;
     }
   }
 
