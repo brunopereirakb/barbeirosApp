@@ -9,6 +9,8 @@ import { MiniMonth } from "./MiniMonth";
 import { DayNoteCard } from "./DayNoteCard";
 import { SlotList } from "./SlotList";
 import { ResizableSplit } from "./ResizableSplit";
+import { getDayHours } from "@/lib/schedule";
+import { getServiceWindows } from "@/lib/default-service";
 
 type Appointment = {
   id: string;
@@ -27,6 +29,11 @@ type Settings = {
   lunchEnd: string;
   cascadeWaitMinutes: number;
   defaultServiceByWeekday?: Record<string, string>;
+  defaultServiceWindowsByWeekday?: Record<
+    string,
+    Array<{ start: string; end: string; serviceId: string }>
+  >;
+  workScheduleByWeekday?: Record<string, { closed?: boolean; start?: string; end?: string }>;
   subscription?: { plan: string; addons: string[] };
 };
 
@@ -688,9 +695,18 @@ export function DayView() {
       {newAppointment && (
         <NewAppointmentModal
           startsAt={newAppointment.startsAt}
-          defaultServiceId={
-            settings?.defaultServiceByWeekday?.[String(newAppointment.startsAt.getDay())]
-          }
+          // Resolve the default service for the *clicked time* — when the day
+          // has time-windowed services, picking 18:30 should pre-fill the
+          // 15-min Corte (the window service) rather than the 20-min default.
+          defaultServiceId={(() => {
+            const at = newAppointment.startsAt;
+            if (!settings) return undefined;
+            const hours = getDayHours(at, settings);
+            const windows = getServiceWindows(at.getDay(), hours, settings, services);
+            const min = at.getHours() * 60 + at.getMinutes();
+            const w = windows.find((w) => min >= w.startMin && min < w.endMin);
+            return w?.service.id ?? settings.defaultServiceByWeekday?.[String(at.getDay())];
+          })()}
           onClose={() => setNewAppointment(null)}
           onCreated={() => {
             setNewAppointment(null);
