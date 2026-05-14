@@ -104,6 +104,24 @@ export function DayView() {
 
   useEffect(() => { void load(); }, [date, view]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  async function quickAction(a: Appointment, status: "done" | "no_show" | "confirmed") {
+    // Optimistic: flip locally first so the row redraws instantly, then PATCH.
+    // If the request fails we reload from the server to recover the truth.
+    setAppointments((prev) => prev.map((x) => (x.id === a.id ? { ...x, status } : x)));
+    try {
+      const r = await fetch(`/api/appointments/${a.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      // Refresh the mini-month dot/counts without a hard reload of slot list.
+      setRefreshKey((k) => k + 1);
+    } catch {
+      void load();
+    }
+  }
+
   async function load() {
     try {
       let apptRes: Appointment[];
@@ -173,6 +191,52 @@ export function DayView() {
     const end = new Date(a.endsAt);
     return ((end.getTime() - start.getTime()) / 60_000) * (PIXELS_PER_HOUR / 60);
   }
+
+  /**
+   * Compute side-by-side horizontal positions for bookings that overlap in
+   * time. Bookings without any overlap take the full width; otherwise the
+   * cluster splits evenly. Result: { [apptId]: { columns, columnIndex } }.
+   */
+  const layout = useMemo(() => {
+    const sorted = [...appointments]
+      .filter((a) => a.status !== "cancelled")
+      .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
+
+    type Slot = { endMs: number; column: number };
+    const map: Record<string, { columns: number; columnIndex: number }> = {};
+    let cluster: { ids: string[]; slots: Slot[]; maxEnd: number } | null = null;
+
+    const flush = () => {
+      if (!cluster) return;
+      const cols = Math.max(1, ...cluster.slots.map((s) => s.column + 1));
+      for (const id of cluster.ids) {
+        const idx = map[id]?.columnIndex ?? 0;
+        map[id] = { columns: cols, columnIndex: idx };
+      }
+      cluster = null;
+    };
+
+    for (const a of sorted) {
+      const startMs = new Date(a.startsAt).getTime();
+      const endMs = new Date(a.endsAt).getTime();
+      if (!cluster || startMs >= cluster.maxEnd) {
+        flush();
+        cluster = { ids: [a.id], slots: [{ endMs, column: 0 }], maxEnd: endMs };
+        map[a.id] = { columns: 1, columnIndex: 0 };
+        continue;
+      }
+      // Find first column whose previous booking has ended.
+      const free = cluster.slots.find((s) => s.endMs <= startMs);
+      const col = free ? free.column : cluster.slots.length;
+      if (free) free.endMs = endMs;
+      else cluster.slots.push({ endMs, column: col });
+      cluster.ids.push(a.id);
+      cluster.maxEnd = Math.max(cluster.maxEnd, endMs);
+      map[a.id] = { columns: 1, columnIndex: col };
+    }
+    flush();
+    return map;
+  }, [appointments]);
 
   // Linha do agora
   const showNowLine = isToday(date);
@@ -333,6 +397,7 @@ export function DayView() {
                 services={services}
                 onCreateAt={(d) => setNewAppointment({ startsAt: d })}
                 onSelectAppointment={setSelectedAppointment}
+                onQuickAction={quickAction}
               />
             ) : (
               <div className="flex flex-1 items-center justify-center text-sm text-ink-400">
@@ -405,6 +470,15 @@ export function DayView() {
               const top = appointmentTop(a);
               const height = appointmentHeight(a);
               const compact = height < 40;
+              // Side-by-side layout for overlapping bookings — share the
+              // available horizontal space between left:48px (time gutter)
+              // and right:8px.
+              const slot = layout[a.id] ?? { columns: 1, columnIndex: 0 };
+              const gutterLeftPx = 48;
+              const gutterRightPx = 8;
+              const widthPct = 100 / slot.columns;
+              const leftCss = `calc(${gutterLeftPx}px + (100% - ${gutterLeftPx + gutterRightPx}px) * ${slot.columnIndex / slot.columns})`;
+              const widthCss = `calc((100% - ${gutterLeftPx + gutterRightPx}px) * ${widthPct / 100} - 2px)`;
               return (
                 <div
                   key={a.id}
@@ -413,13 +487,13 @@ export function DayView() {
                     setSelectedAppointment(a);
                   }}
                   className={cn(
-                    "absolute left-12 right-2 cursor-pointer overflow-hidden rounded-md transition-shadow hover:shadow-md",
+                    "absolute cursor-pointer overflow-hidden rounded-md transition-shadow hover:shadow-md",
                     a.status === "confirmed" && "bg-brand-50 text-brand-800",
                     a.status === "pending" && "bg-amber-50 text-amber-900",
                     a.status === "done" && "bg-ink-100 text-ink-500",
                     a.status === "no_show" && "bg-red-50 text-red-800"
                   )}
-                  style={{ top, height }}
+                  style={{ top, height, left: leftCss, width: widthCss }}
                 >
                   <div
                     className={cn(

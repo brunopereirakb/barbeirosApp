@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { formatTime, durationLabel, formatDate } from "@/lib/utils";
-import { Phone, MessageCircle, Check, X, ListChecks } from "lucide-react";
+import { Phone, MessageCircle, Check, X, ListChecks, Pencil, Save } from "lucide-react";
 
 type Appointment = {
   id: string;
@@ -14,6 +14,8 @@ type Appointment = {
   client: { id: string; code: number | null; name: string; phone: string | null };
   service: { id: string; name: string; durationMin: number };
 };
+
+type Service = { id: string; name: string; durationMin: number };
 
 type WaitlistMatch = {
   id: string;
@@ -38,6 +40,29 @@ export function AppointmentDetailModal({
   const [reminderState, setReminderState] = useState<"idle" | "sent" | "failed">("idle");
   const [error, setError] = useState("");
 
+  // Inline edit state — pre-filled from the current appointment.
+  const [editing, setEditing] = useState(false);
+  const [services, setServices] = useState<Service[]>([]);
+  const startDate = new Date(appointment.startsAt);
+  const [editDate, setEditDate] = useState(() =>
+    `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, "0")}-${String(startDate.getDate()).padStart(2, "0")}`
+  );
+  const [editTime, setEditTime] = useState(() =>
+    `${String(startDate.getHours()).padStart(2, "0")}:${String(startDate.getMinutes()).padStart(2, "0")}`
+  );
+  const [editServiceId, setEditServiceId] = useState(appointment.service.id);
+  const [editNotes, setEditNotes] = useState(appointment.notes ?? "");
+  const [overlapConflict, setOverlapConflict] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (editing && services.length === 0) {
+      void fetch("/api/services")
+        .then((r) => r.json())
+        .then(setServices)
+        .catch(() => {});
+    }
+  }, [editing, services.length]);
+
   useEffect(() => {
     if (showCancel) {
       void fetch(
@@ -50,6 +75,40 @@ export function AppointmentDetailModal({
         });
     }
   }, [showCancel, appointment.startsAt, appointment.endsAt]);
+
+  async function saveEdit(allowOverlap = false) {
+    if (working) return;
+    setError("");
+    setOverlapConflict(null);
+    setWorking(true);
+    try {
+      const [h, m] = editTime.split(":").map(Number);
+      const [y, mo, d] = editDate.split("-").map(Number);
+      const newStart = new Date(y, mo - 1, d, h, m, 0, 0);
+      const r = await fetch(`/api/appointments/${appointment.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          startsAt: newStart.toISOString(),
+          serviceId: editServiceId,
+          notes: editNotes || null,
+          allowOverlap: allowOverlap || undefined,
+        }),
+      });
+      if (!r.ok) {
+        const data = await r.json().catch(() => ({}));
+        if (r.status === 409 && data.message) {
+          setOverlapConflict(data.message);
+        } else {
+          setError(data.error || `Não foi possível guardar (${r.status})`);
+        }
+        return;
+      }
+      onChanged();
+    } finally {
+      setWorking(false);
+    }
+  }
 
   async function changeStatus(status: Appointment["status"]) {
     setWorking(true);
@@ -208,30 +267,141 @@ export function AppointmentDetailModal({
     );
   }
 
+  const selectedEditService = services.find((s) => s.id === editServiceId);
+
   return (
     <Modal open onClose={onClose} title="Detalhe da marcação" size="md">
       <div className="space-y-3">
-        <div className="rounded-lg bg-ink-50 p-3">
-          <div className="text-base font-medium text-ink-900">{appointment.client.name}</div>
-          {appointment.client.phone && (
-            <div className="mt-0.5 flex items-center gap-1 text-xs text-ink-600">
-              <Phone size={12} /> {appointment.client.phone}
-            </div>
+        <div className="flex items-start justify-between gap-2 rounded-lg bg-ink-50 p-3">
+          <div className="min-w-0">
+            <div className="truncate text-base font-medium text-ink-900">{appointment.client.name}</div>
+            {appointment.client.phone && (
+              <div className="mt-0.5 flex items-center gap-1 text-xs text-ink-600">
+                <Phone size={12} /> {appointment.client.phone}
+              </div>
+            )}
+          </div>
+          {!editing && appointment.status !== "cancelled" && appointment.status !== "done" && (
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              title="Editar marcação"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-ink-500 hover:bg-ink-200 hover:text-ink-700"
+            >
+              <Pencil size={14} />
+            </button>
           )}
         </div>
 
-        <Row label="Serviço" value={appointment.service.name} />
-        <Row label="Quando" value={`${formatDate(appointment.startsAt)} · ${formatTime(appointment.startsAt)}`} />
-        <Row label="Duração" value={durationLabel(appointment.service.durationMin)} />
-        <Row
-          label="Estado"
-          value={<StatusBadge status={appointment.status} />}
-        />
-        {appointment.notes && (
-          <div className="rounded-md border border-ink-200 bg-card p-3">
-            <div className="mb-0.5 text-[11px] font-medium uppercase tracking-wider text-ink-400">Notas</div>
-            <div className="text-sm text-ink-700">{appointment.notes}</div>
+        {editing ? (
+          <div className="space-y-3 rounded-md border border-brand-200 bg-brand-50/30 p-3">
+            <div className="grid grid-cols-2 gap-2">
+              <label className="text-xs text-ink-600">
+                Data
+                <input
+                  type="date"
+                  value={editDate}
+                  onChange={(e) => setEditDate(e.target.value)}
+                  className="mt-0.5 w-full rounded-md border border-ink-300 px-2 py-1.5 text-sm"
+                />
+              </label>
+              <label className="text-xs text-ink-600">
+                Hora
+                <input
+                  type="time"
+                  step={300}
+                  value={editTime}
+                  onChange={(e) => setEditTime(e.target.value)}
+                  className="mt-0.5 w-full rounded-md border border-ink-300 px-2 py-1.5 text-sm"
+                />
+              </label>
+            </div>
+            <label className="block text-xs text-ink-600">
+              Serviço
+              <select
+                value={editServiceId}
+                onChange={(e) => setEditServiceId(e.target.value)}
+                className="mt-0.5 w-full rounded-md border border-ink-300 px-2 py-1.5 text-sm"
+              >
+                {services.length === 0 && (
+                  <option value={appointment.service.id}>
+                    {appointment.service.name} · {durationLabel(appointment.service.durationMin)}
+                  </option>
+                )}
+                {services.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name} · {durationLabel(s.durationMin)}
+                  </option>
+                ))}
+              </select>
+              {selectedEditService && selectedEditService.id !== appointment.service.id && (
+                <span className="mt-0.5 block text-[11px] text-amber-700">
+                  Mudar serviço recalcula o fim da marcação ({durationLabel(selectedEditService.durationMin)}).
+                </span>
+              )}
+            </label>
+            <label className="block text-xs text-ink-600">
+              Notas
+              <textarea
+                value={editNotes}
+                onChange={(e) => setEditNotes(e.target.value)}
+                rows={2}
+                className="mt-0.5 w-full rounded-md border border-ink-300 px-2 py-1.5 text-sm"
+              />
+            </label>
+
+            {overlapConflict && (
+              <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                <p className="font-medium">Conflito de horário</p>
+                <p className="mt-0.5">{overlapConflict}</p>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setEditing(false);
+                  setOverlapConflict(null);
+                  setError("");
+                }}
+                disabled={working}
+              >
+                Cancelar
+              </Button>
+              {overlapConflict ? (
+                <Button
+                  size="sm"
+                  variant="danger"
+                  onClick={() => void saveEdit(true)}
+                  disabled={working}
+                >
+                  Confirmar mesmo assim
+                </Button>
+              ) : (
+                <Button size="sm" onClick={() => void saveEdit(false)} disabled={working}>
+                  <Save size={14} /> Guardar
+                </Button>
+              )}
+            </div>
           </div>
+        ) : (
+          <>
+            <Row label="Serviço" value={appointment.service.name} />
+            <Row label="Quando" value={`${formatDate(appointment.startsAt)} · ${formatTime(appointment.startsAt)}`} />
+            <Row label="Duração" value={durationLabel(appointment.service.durationMin)} />
+            <Row
+              label="Estado"
+              value={<StatusBadge status={appointment.status} />}
+            />
+            {appointment.notes && (
+              <div className="rounded-md border border-ink-200 bg-card p-3">
+                <div className="mb-0.5 text-[11px] font-medium uppercase tracking-wider text-ink-400">Notas</div>
+                <div className="text-sm text-ink-700">{appointment.notes}</div>
+              </div>
+            )}
+          </>
         )}
 
         {reminderState === "sent" && (
@@ -248,28 +418,35 @@ export function AppointmentDetailModal({
           <p className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>
         )}
 
-        <div className="flex flex-wrap gap-2 border-t border-ink-200 pt-3">
-          {appointment.status !== "done" && (
-            <Button size="sm" variant="secondary" onClick={() => changeStatus("done")} disabled={working}>
-              <Check size={14} /> Marcar concluída
-            </Button>
-          )}
-          {appointment.status !== "no_show" && appointment.status !== "done" && (
-            <Button size="sm" variant="secondary" onClick={() => changeStatus("no_show")} disabled={working}>
-              <X size={14} /> Não veio
-            </Button>
-          )}
-          {appointment.client.phone && (
-            <Button size="sm" variant="secondary" onClick={sendReminder} disabled={working}>
-              <MessageCircle size={14} /> Enviar lembrete
-            </Button>
-          )}
-          {appointment.status !== "cancelled" && appointment.status !== "done" && (
-            <Button size="sm" variant="danger" onClick={() => setShowCancel(true)} disabled={working}>
-              <ListChecks size={14} /> Cancelar e notificar fila
-            </Button>
-          )}
-        </div>
+        {!editing && (
+          <div className="flex flex-wrap gap-2 border-t border-ink-200 pt-3">
+            {appointment.status === "pending" && (
+              <Button size="sm" onClick={() => changeStatus("confirmed")} disabled={working}>
+                <Check size={14} /> Confirmar
+              </Button>
+            )}
+            {appointment.status !== "done" && (
+              <Button size="sm" variant="secondary" onClick={() => changeStatus("done")} disabled={working}>
+                <Check size={14} /> Marcar concluída
+              </Button>
+            )}
+            {appointment.status !== "no_show" && appointment.status !== "done" && (
+              <Button size="sm" variant="secondary" onClick={() => changeStatus("no_show")} disabled={working}>
+                <X size={14} /> Não veio
+              </Button>
+            )}
+            {appointment.client.phone && (
+              <Button size="sm" variant="secondary" onClick={sendReminder} disabled={working}>
+                <MessageCircle size={14} /> Enviar lembrete
+              </Button>
+            )}
+            {appointment.status !== "cancelled" && appointment.status !== "done" && (
+              <Button size="sm" variant="danger" onClick={() => setShowCancel(true)} disabled={working}>
+                <ListChecks size={14} /> Cancelar e notificar fila
+              </Button>
+            )}
+          </div>
+        )}
       </div>
     </Modal>
   );

@@ -25,24 +25,41 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const data: Record<string, unknown> = {};
   if (body.status) data.status = body.status;
   if (body.notes !== undefined) data.notes = body.notes;
+  if (body.clientId !== undefined) {
+    const c = await prisma.client.findFirst({ where: { id: body.clientId, userId: tenantId } });
+    if (!c) return NextResponse.json({ error: "Cliente não encontrado" }, { status: 404 });
+    data.clientId = c.id;
+  }
 
   let newRange: { start: Date; end: Date } | null = null;
-  if (body.startsAt) {
-    const start = new Date(body.startsAt);
+  // When either startsAt or serviceId change, we must recompute the time
+  // window from scratch — the duration depends on the service.
+  if (body.startsAt || body.serviceId) {
+    const existing = await prisma.appointment.findFirstOrThrow({
+      where: { id, userId: tenantId },
+      include: { service: true },
+    });
+    const start = body.startsAt ? new Date(body.startsAt) : existing.startsAt;
     if (Number.isNaN(start.getTime())) {
       return NextResponse.json({ error: "startsAt inválido" }, { status: 400 });
     }
-    const existing = await prisma.appointment.findFirstOrThrow({ where: { id, userId: tenantId }, include: { service: true } });
-    const end = new Date(start.getTime() + existing.service.durationMin * 60_000);
+    let durationMin = existing.service.durationMin;
+    if (body.serviceId && body.serviceId !== existing.serviceId) {
+      const newSvc = await prisma.service.findFirst({ where: { id: body.serviceId, userId: tenantId } });
+      if (!newSvc) return NextResponse.json({ error: "Serviço não encontrado" }, { status: 404 });
+      data.serviceId = newSvc.id;
+      durationMin = newSvc.durationMin;
+    }
+    const end = new Date(start.getTime() + durationMin * 60_000);
     data.startsAt = start;
     data.endsAt = end;
     newRange = { start, end };
   }
 
   // When moving an appointment, refuse if the new window overlaps another
-  // non-cancelled booking. `id: { not: id }` lets the appointment overlap
-  // itself (a no-op or same-window edit).
-  if (newRange) {
+  // non-cancelled booking unless allowOverlap is set. `id: { not: id }`
+  // lets the appointment overlap itself (a no-op or same-window edit).
+  if (newRange && !body.allowOverlap) {
     const overlap = await prisma.appointment.findFirst({
       where: {
         userId: tenantId,
