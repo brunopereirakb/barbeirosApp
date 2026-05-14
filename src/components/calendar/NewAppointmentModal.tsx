@@ -120,7 +120,11 @@ export function NewAppointmentModal({
       });
       if (!r.ok) {
         const data = await r.json().catch(() => ({}));
-        setError(data.error || `Não foi possível criar a marcação (${r.status})`);
+        if (r.status === 409 && data.message) {
+          setError(data.message);
+        } else {
+          setError(data.error || `Não foi possível criar a marcação (${r.status})`);
+        }
         return;
       }
       onCreated();

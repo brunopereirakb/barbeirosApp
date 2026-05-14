@@ -65,18 +65,69 @@ export async function POST(req: NextRequest) {
 
   const end = new Date(start.getTime() + service.durationMin * 60_000);
 
-  const appointment = await prisma.appointment.create({
-    data: {
-      userId: tenantId,
-      clientId,
-      serviceId,
-      startsAt: start,
-      endsAt: end,
-      status: status || "confirmed",
-      notes: notes || null,
-    },
-    include: { client: true, service: true },
-  });
+  // Run the overlap check and the insert inside a single transaction so
+  // two near-simultaneous bookings can't both pass the check and both
+  // commit. Postgres default isolation (READ COMMITTED) leaves a tiny
+  // race window for true write-write conflicts, but the transaction at
+  // least guarantees both queries see the same snapshot.
+  try {
+    const appointment = await prisma.$transaction(async (tx) => {
+      const overlap = await tx.appointment.findFirst({
+        where: {
+          userId: tenantId,
+          status: { not: "cancelled" },
+          AND: [{ startsAt: { lt: end } }, { endsAt: { gt: start } }],
+        },
+        include: { client: true, service: true },
+      });
+      if (overlap) {
+        throw new ConflictError(overlap);
+      }
+      return tx.appointment.create({
+        data: {
+          userId: tenantId,
+          clientId,
+          serviceId,
+          startsAt: start,
+          endsAt: end,
+          status: status || "confirmed",
+          notes: notes || null,
+        },
+        include: { client: true, service: true },
+      });
+    });
+    return NextResponse.json(appointment);
+  } catch (e) {
+    if (e instanceof ConflictError) {
+      return NextResponse.json(
+        {
+          error: "slot_taken",
+          message: `Já existe uma marcação neste horário (${e.overlap.client.name} · ${e.overlap.service.name}).`,
+          conflictWith: {
+            id: e.overlap.id,
+            clientName: e.overlap.client.name,
+            serviceName: e.overlap.service.name,
+            startsAt: e.overlap.startsAt.toISOString(),
+            endsAt: e.overlap.endsAt.toISOString(),
+          },
+        },
+        { status: 409 }
+      );
+    }
+    throw e;
+  }
+}
 
-  return NextResponse.json(appointment);
+class ConflictError extends Error {
+  constructor(
+    public readonly overlap: {
+      id: string;
+      startsAt: Date;
+      endsAt: Date;
+      client: { name: string };
+      service: { name: string };
+    }
+  ) {
+    super("slot_taken");
+  }
 }

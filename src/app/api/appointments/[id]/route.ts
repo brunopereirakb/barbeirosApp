@@ -25,12 +25,54 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const data: Record<string, unknown> = {};
   if (body.status) data.status = body.status;
   if (body.notes !== undefined) data.notes = body.notes;
+
+  let newRange: { start: Date; end: Date } | null = null;
   if (body.startsAt) {
     const start = new Date(body.startsAt);
-    data.startsAt = start;
+    if (Number.isNaN(start.getTime())) {
+      return NextResponse.json({ error: "startsAt inválido" }, { status: 400 });
+    }
     const existing = await prisma.appointment.findFirstOrThrow({ where: { id, userId: tenantId }, include: { service: true } });
-    data.endsAt = new Date(start.getTime() + existing.service.durationMin * 60_000);
+    const end = new Date(start.getTime() + existing.service.durationMin * 60_000);
+    data.startsAt = start;
+    data.endsAt = end;
+    newRange = { start, end };
   }
+
+  // When moving an appointment, refuse if the new window overlaps another
+  // non-cancelled booking. `id: { not: id }` lets the appointment overlap
+  // itself (a no-op or same-window edit).
+  if (newRange) {
+    const overlap = await prisma.appointment.findFirst({
+      where: {
+        userId: tenantId,
+        id: { not: id },
+        status: { not: "cancelled" },
+        AND: [
+          { startsAt: { lt: newRange.end } },
+          { endsAt: { gt: newRange.start } },
+        ],
+      },
+      include: { client: true, service: true },
+    });
+    if (overlap) {
+      return NextResponse.json(
+        {
+          error: "slot_taken",
+          message: `Já existe uma marcação neste horário (${overlap.client.name} · ${overlap.service.name}).`,
+          conflictWith: {
+            id: overlap.id,
+            clientName: overlap.client.name,
+            serviceName: overlap.service.name,
+            startsAt: overlap.startsAt.toISOString(),
+            endsAt: overlap.endsAt.toISOString(),
+          },
+        },
+        { status: 409 }
+      );
+    }
+  }
+
   const updated = await prisma.appointment.update({
     where: { id },
     data,
