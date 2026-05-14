@@ -6,8 +6,8 @@ import { getDayHours } from "@/lib/schedule";
 
 type MiniAppt = {
   startsAt: string;
+  endsAt: string;
   status: string;
-  service?: { durationMin: number };
 };
 
 type Service = { id: string; name: string; durationMin: number };
@@ -85,8 +85,13 @@ function dayInfo(
     const start = new Date(a.startsAt);
     if (!isSameDay(start, d)) continue;
     const startMin = start.getHours() * 60 + start.getMinutes();
-    const dur = a.service?.durationMin ?? slotMin;
-    const slots = Math.max(1, Math.ceil(dur / slotMin));
+    // Use the actual stored duration (endsAt - startsAt) rather than the
+    // service's current durationMin — services can be edited after a booking
+    // is made and the slot list trusts endsAt, so we should too.
+    const end = new Date(a.endsAt);
+    const durMs = end.getTime() - start.getTime();
+    const durMin = durMs > 0 ? durMs / 60_000 : slotMin;
+    const slots = Math.max(1, Math.ceil(durMin / slotMin));
     if (startMin < lunchStart) morningUsed += slots;
     else if (startMin >= lunchEnd) afternoonUsed += slots;
   }
@@ -116,11 +121,17 @@ export function MiniMonth({
   onSelectDay,
   settings,
   services,
+  // Increments whenever the parent dashboard refetches its appointments. We
+  // listen to it so the mini-month dots/counts stay in sync after a booking
+  // is created or cancelled — without it, the counts would only refresh on
+  // a month-navigation click.
+  refreshKey = 0,
 }: {
   selected: Date;
   onSelectDay: (d: Date) => void;
   settings: Settings | null;
   services: Service[];
+  refreshKey?: number;
 }) {
   const [viewMonth, setViewMonth] = useState(
     new Date(selected.getFullYear(), selected.getMonth(), 1)
@@ -149,7 +160,7 @@ export function MiniMonth({
       .then((r) => (r.ok ? r.json() : []))
       .catch(() => [])
       .then(setAppointments);
-  }, [viewMonth]);
+  }, [viewMonth, refreshKey]);
 
   const days = useMemo(() => getMonthGrid(viewMonth), [viewMonth]);
 

@@ -72,6 +72,9 @@ export function DayView() {
   const [showPanel, setShowPanel] = useState(false);
   const [now, setNow] = useState<Date>(new Date());
   const [birthdayClients, setBirthdayClients] = useState<{ id: string; name: string; customerSince: string }[]>([]);
+  // Bumped each time `load()` runs successfully — passed to MiniMonth so its
+  // own fetch (which covers the whole month) re-runs after a booking change.
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 30_000);
@@ -122,6 +125,7 @@ export function DayView() {
           return b.getMonth() === date.getMonth() && b.getDate() === date.getDate();
         })
       );
+      setRefreshKey((k) => k + 1);
     } catch (e) {
       console.error("Calendar load error:", e);
     }
@@ -298,6 +302,7 @@ export function DayView() {
                 onSelectDay={setDate}
                 settings={settings}
                 services={services}
+                refreshKey={refreshKey}
               />
               <DayNoteCard date={date} />
             </>
