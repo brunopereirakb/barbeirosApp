@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { ServiceSearchSelect } from "@/components/ui/ServiceSearchSelect";
 import { Save, ChevronDown, Plus, X } from "lucide-react";
 
 type Service = { id: string; name: string; durationMin: number };
@@ -428,20 +429,15 @@ function DayServiceRow({
     <div className="space-y-1.5">
       <div className="flex items-center gap-3">
         <span className="w-20 shrink-0 text-xs font-medium text-ink-700">{name}</span>
-        <select
+        <ServiceSearchSelect
+          services={services}
           value={singleValue}
-          onChange={(e) => onSingleChange(e.target.value)}
+          onChange={onSingleChange}
+          allowEmpty
+          emptyLabel="— sem serviço padrão —"
           disabled={hasWindows}
-          className="input flex-1 disabled:bg-ink-100 disabled:text-ink-400"
-          title={hasWindows ? "Definido pelos períodos abaixo" : undefined}
-        >
-          <option value="">— sem serviço padrão —</option>
-          {services.map((sv) => (
-            <option key={sv.id} value={sv.id}>
-              {sv.name} ({sv.durationMin} min)
-            </option>
-          ))}
-        </select>
+          className="flex-1"
+        />
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
@@ -489,17 +485,13 @@ function DayServiceRow({
                     onChange={(e) => updateWindow(i, { end: e.target.value })}
                     className="input w-24 px-2 py-1 text-xs"
                   />
-                  <select
+                  <ServiceSearchSelect
+                    services={services}
                     value={w.serviceId}
-                    onChange={(e) => updateWindow(i, { serviceId: e.target.value })}
-                    className="input flex-1 px-2 py-1 text-xs"
-                  >
-                    {services.map((sv) => (
-                      <option key={sv.id} value={sv.id}>
-                        {sv.name} ({sv.durationMin} min)
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(id) => updateWindow(i, { serviceId: id })}
+                    placeholder="Escolher serviço"
+                    className="flex-1"
+                  />
                   <button
                     type="button"
                     onClick={() => removeWindow(i)}
