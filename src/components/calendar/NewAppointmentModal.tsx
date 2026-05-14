@@ -10,10 +10,16 @@ type Service = { id: string; name: string; durationMin: number; category: string
 
 export function NewAppointmentModal({
   startsAt,
+  defaultServiceId,
   onClose,
   onCreated,
 }: {
   startsAt: Date;
+  /**
+   * Pre-selected service id when the modal is opened by clicking on an empty
+   * slot — usually the salon's default service for that weekday.
+   */
+  defaultServiceId?: string;
   onClose: () => void;
   onCreated: () => void;
 }) {
@@ -27,13 +33,17 @@ export function NewAppointmentModal({
   const [creatingClient, setCreatingClient] = useState(false);
   const [clientError, setClientError] = useState("");
   const [clientId, setClientId] = useState<string>("");
-  const [serviceId, setServiceId] = useState<string>("");
+  const [serviceId, setServiceId] = useState<string>(defaultServiceId ?? "");
   const [time, setTime] = useState<string>(
     startsAt.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })
   );
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  // Tracks an "overlap" 409 response so the user can confirm and retry.
+  const [overlapConflict, setOverlapConflict] = useState<{
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     void Promise.all([
@@ -98,9 +108,10 @@ export function NewAppointmentModal({
     }
   }
 
-  async function save() {
+  async function save(allowOverlap = false) {
     if (!clientId || !serviceId) return;
     setError("");
+    if (!allowOverlap) setOverlapConflict(null);
     setSaving(true);
     try {
       const [h, m] = time.split(":").map(Number);
@@ -116,12 +127,15 @@ export function NewAppointmentModal({
           startsAt: start.toISOString(),
           notes: notes || null,
           status: "confirmed",
+          allowOverlap: allowOverlap || undefined,
         }),
       });
       if (!r.ok) {
         const data = await r.json().catch(() => ({}));
         if (r.status === 409 && data.message) {
-          setError(data.message);
+          // Surface the conflict with a "confirmar mesmo assim" affordance
+          // instead of just a plain error string.
+          setOverlapConflict({ message: data.message });
         } else {
           setError(data.error || `Não foi possível criar a marcação (${r.status})`);
         }
@@ -311,13 +325,34 @@ export function NewAppointmentModal({
           </div>
         )}
 
+        {overlapConflict && (
+          <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
+            <p className="font-medium">Conflito de horário</p>
+            <p className="mt-0.5 text-xs">{overlapConflict.message}</p>
+            <p className="mt-1.5 text-xs">
+              Podes ajustar a hora/serviço ou confirmar mesmo assim — a marcação
+              ficará sobreposta à existente.
+            </p>
+          </div>
+        )}
+
         <div className="flex justify-end gap-2 border-t border-ink-200 pt-3">
           <Button variant="secondary" onClick={onClose}>
             Cancelar
           </Button>
-          <Button onClick={save} disabled={saving || !clientId || !serviceId}>
-            {saving ? "A guardar..." : "Criar marcação"}
-          </Button>
+          {overlapConflict ? (
+            <Button
+              variant="danger"
+              onClick={() => void save(true)}
+              disabled={saving || !clientId || !serviceId}
+            >
+              {saving ? "A guardar..." : "Confirmar mesmo assim"}
+            </Button>
+          ) : (
+            <Button onClick={() => void save(false)} disabled={saving || !clientId || !serviceId}>
+              {saving ? "A guardar..." : "Criar marcação"}
+            </Button>
+          )}
         </div>
       </div>
     </Modal>

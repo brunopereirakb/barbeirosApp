@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireTenant } from "@/lib/api-auth";
-import { sendWhatsApp, messageTemplates } from "@/lib/whatsapp";
+import { sendWhatsApp, messageTemplates, renderReminderTemplate } from "@/lib/whatsapp";
 
 export async function GET(req: NextRequest) {
   const { tenantId, response } = await requireTenant();
@@ -47,7 +47,12 @@ export async function POST(req: NextRequest) {
       include: { service: true },
     });
     if (!appt) return NextResponse.json({ error: "marcação não encontrada" }, { status: 404 });
-    messageBody = messageTemplates.reminder24h(client.name, appt.service.name, appt.startsAt, salonName);
+    messageBody = renderReminderTemplate(settings?.reminderTemplate, {
+      clientName: client.name,
+      serviceName: appt.service.name,
+      when: appt.startsAt,
+      salonName,
+    });
   }
 
   if (!messageBody) {

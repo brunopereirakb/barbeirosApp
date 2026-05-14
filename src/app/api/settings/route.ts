@@ -81,6 +81,12 @@ export async function PATCH(req: NextRequest) {
   if (body.lunchEnd !== undefined) data.lunchEnd = body.lunchEnd;
   if (body.cascadeWaitMinutes !== undefined) data.cascadeWaitMinutes = Number(body.cascadeWaitMinutes);
   if (body.reminderHoursBefore !== undefined) data.reminderHoursBefore = Number(body.reminderHoursBefore);
+  if (body.reminderTemplate !== undefined) {
+    // Empty string ↔ revert to default. Treating null/"" the same way means
+    // the user can reset by clearing the textarea.
+    const t = typeof body.reminderTemplate === "string" ? body.reminderTemplate : "";
+    data.reminderTemplate = t.trim() === "" ? null : t;
+  }
   if (body.defaultServiceByWeekday !== undefined) {
     // Accept either an object map or a JSON string; persist as JSON string.
     data.defaultServiceByWeekday =

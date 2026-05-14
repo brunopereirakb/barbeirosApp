@@ -169,6 +169,10 @@ model Settings {
   lunchEnd                String  @default("14:00")
   cascadeWaitMinutes      Int     @default(30)
   reminderHoursBefore     Int     @default(24)
+  // Free-form template used to render the 24h reminder. Supports placeholders
+  // {cliente}, {servico}, {hora}, {data}, {salao}. Empty/null falls back to
+  // DEFAULT_REMINDER_TEMPLATE in src/lib/whatsapp.ts.
+  reminderTemplate        String?
   // JSON: { "0": "serviceId", "1": "serviceId", ... } where 0=Sunday, 6=Saturday.
   // Drives slot duration on the dashboard.
   defaultServiceByWeekday String  @default("{}")

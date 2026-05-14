@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireTenant } from "@/lib/api-auth";
-import { sendWhatsApp, messageTemplates } from "@/lib/whatsapp";
+import { sendWhatsApp, renderReminderTemplate } from "@/lib/whatsapp";
 import { salonStartOfDay, salonEndOfDay, zonedParts, zonedDayToUTC } from "@/lib/timezone";
 
 export async function POST(req: NextRequest) {
@@ -41,7 +41,12 @@ export async function POST(req: NextRequest) {
     try {
       await sendWhatsApp({
         to: appt.client.phone,
-        body: messageTemplates.reminder24h(appt.client.name, appt.service.name, appt.startsAt, salonName),
+        body: renderReminderTemplate(settings?.reminderTemplate, {
+          clientName: appt.client.name,
+          serviceName: appt.service.name,
+          when: appt.startsAt,
+          salonName,
+        }),
         context: { type: "reminder", appointmentId: appt.id },
         tenantId,
       });

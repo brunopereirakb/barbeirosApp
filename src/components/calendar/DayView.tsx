@@ -614,6 +614,9 @@ export function DayView() {
       {newAppointment && (
         <NewAppointmentModal
           startsAt={newAppointment.startsAt}
+          defaultServiceId={
+            settings?.defaultServiceByWeekday?.[String(newAppointment.startsAt.getDay())]
+          }
           onClose={() => setNewAppointment(null)}
           onCreated={() => {
             setNewAppointment(null);

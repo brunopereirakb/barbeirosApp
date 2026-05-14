@@ -74,18 +74,37 @@ export async function sendWhatsApp(opts: SendMessageOptions): Promise<SendMessag
   }
 }
 
-export const messageTemplates = {
-  reminder24h(clientName: string, serviceName: string, when: Date, salonName: string): string {
-    const time = when.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" });
-    const date = when.toLocaleDateString("pt-PT", { weekday: "long", day: "numeric", month: "long" });
-    return `Olá ${clientName}! 👋
+export const DEFAULT_REMINDER_TEMPLATE = `Olá {cliente}! 👋
 
-Lembrete da sua marcação no ${salonName}:
-📅 ${date}
-🕐 ${time}
-✂️ ${serviceName}
+Lembrete da sua marcação no {salao}:
+📅 {data}
+🕐 {hora}
+✂️ {servico}
 
 Se precisar de remarcar, responda a esta mensagem. Até amanhã!`;
+
+/**
+ * Render the 24h reminder by substituting placeholders into the salon's
+ * configured template (or the default if none is set).
+ */
+export function renderReminderTemplate(
+  template: string | null | undefined,
+  vars: { clientName: string; serviceName: string; when: Date; salonName: string }
+): string {
+  const tpl = template?.trim() ? template : DEFAULT_REMINDER_TEMPLATE;
+  const time = vars.when.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" });
+  const date = vars.when.toLocaleDateString("pt-PT", { weekday: "long", day: "numeric", month: "long" });
+  return tpl
+    .replaceAll("{cliente}", vars.clientName)
+    .replaceAll("{servico}", vars.serviceName)
+    .replaceAll("{hora}", time)
+    .replaceAll("{data}", date)
+    .replaceAll("{salao}", vars.salonName);
+}
+
+export const messageTemplates = {
+  reminder24h(clientName: string, serviceName: string, when: Date, salonName: string): string {
+    return renderReminderTemplate(null, { clientName, serviceName, when, salonName });
   },
 
   birthdayWish(clientName: string, salonName: string): string {

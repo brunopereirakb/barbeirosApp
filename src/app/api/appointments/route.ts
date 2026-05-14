@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
   if (response) return response;
 
   const body = await req.json();
-  const { clientId, serviceId, startsAt, notes, status } = body;
+  const { clientId, serviceId, startsAt, notes, status, allowOverlap } = body;
 
   if (!clientId || !serviceId || !startsAt) {
     return NextResponse.json(
@@ -70,18 +70,22 @@ export async function POST(req: NextRequest) {
   // commit. Postgres default isolation (READ COMMITTED) leaves a tiny
   // race window for true write-write conflicts, but the transaction at
   // least guarantees both queries see the same snapshot.
+  // `allowOverlap` lets the user explicitly skip the conflict guard
+  // (e.g. squeezing two clients into the same slot near lunch).
   try {
     const appointment = await prisma.$transaction(async (tx) => {
-      const overlap = await tx.appointment.findFirst({
-        where: {
-          userId: tenantId,
-          status: { not: "cancelled" },
-          AND: [{ startsAt: { lt: end } }, { endsAt: { gt: start } }],
-        },
-        include: { client: true, service: true },
-      });
-      if (overlap) {
-        throw new ConflictError(overlap);
+      if (!allowOverlap) {
+        const overlap = await tx.appointment.findFirst({
+          where: {
+            userId: tenantId,
+            status: { not: "cancelled" },
+            AND: [{ startsAt: { lt: end } }, { endsAt: { gt: start } }],
+          },
+          include: { client: true, service: true },
+        });
+        if (overlap) {
+          throw new ConflictError(overlap);
+        }
       }
       return tx.appointment.create({
         data: {

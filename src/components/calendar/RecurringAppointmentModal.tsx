@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Loader2, CalendarClock, Check, X, AlertTriangle, Ban, Clock } from "lucide-react";
 import { getDayHours } from "@/lib/schedule";
-import { timeStringToMinutes, isSameDay } from "@/lib/utils";
+import { timeStringToMinutes, isSameDay, durationLabel } from "@/lib/utils";
 
 type Client = { id: string; code: number | null; name: string; phone: string | null };
 type Service = { id: string; name: string; durationMin: number; category: string | null };
@@ -429,7 +429,7 @@ export function RecurringAppointmentModal({ onClose, onCreated, defaultDate }: P
               <option value="">— escolher serviço —</option>
               {services.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.name}
+                  {s.name} · {durationLabel(s.durationMin)}
                 </option>
               ))}
             </select>

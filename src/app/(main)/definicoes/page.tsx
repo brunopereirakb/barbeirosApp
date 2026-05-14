@@ -16,10 +16,20 @@ type Settings = {
   lunchEnd: string;
   cascadeWaitMinutes: number;
   reminderHoursBefore: number;
+  reminderTemplate: string | null;
   whatsappMode: string;
   defaultServiceByWeekday: Record<string, string>;
   workScheduleByWeekday: Record<string, WorkEntry>;
 };
+
+const DEFAULT_REMINDER_TEMPLATE = `Olá {cliente}! 👋
+
+Lembrete da sua marcação no {salao}:
+📅 {data}
+🕐 {hora}
+✂️ {servico}
+
+Se precisar de remarcar, responda a esta mensagem. Até amanhã!`;
 
 const TIMEZONE_OPTIONS = [
   "Europe/Lisbon",
@@ -220,7 +230,7 @@ export default function SettingsPage() {
 
           <Section
             title="Serviço padrão por dia da semana"
-            hint="Define o serviço habitual de cada dia. A duração desse serviço determina o tamanho dos slots no painel diário (ex.: corte de 15 min nos dias de semana, 10 min ao fim de semana)."
+            hint="Define o serviço habitual de cada dia. A duração desse serviço determina o tamanho dos slots no painel diário (ex.: corte de 15 min nos dias de semana, 10 min ao fim de semana). Alterar o serviço padrão NÃO muda as marcações já existentes — apenas a grelha do calendário e o número de slots disponíveis. Se mudares para um serviço mais longo, as contagens livre/ocupado podem parecer diferentes até as marcações antigas terminarem."
           >
             <div className="space-y-2">
               {WEEKDAY_ORDER.map((dow) => {
@@ -270,7 +280,7 @@ export default function SettingsPage() {
             </Field>
           </Section>
 
-          <Section title="Lembretes" hint="Quantas horas antes da marcação enviar lembrete automático.">
+          <Section title="Lembretes" hint="Quantas horas antes da marcação enviar lembrete automático, e mensagem usada.">
             <Field label="Horas antes">
               <input
                 type="number"
@@ -280,6 +290,26 @@ export default function SettingsPage() {
                 onChange={(e) => setS({ ...s, reminderHoursBefore: Number(e.target.value) })}
                 className="input"
               />
+            </Field>
+            <Field label="Mensagem do lembrete">
+              <textarea
+                value={s.reminderTemplate ?? ""}
+                onChange={(e) =>
+                  setS({ ...s, reminderTemplate: e.target.value === "" ? null : e.target.value })
+                }
+                rows={8}
+                placeholder={DEFAULT_REMINDER_TEMPLATE}
+                className="input font-mono text-xs leading-relaxed"
+              />
+              <p className="mt-1 text-[11px] text-ink-500">
+                Substituídos automaticamente:{" "}
+                <code className="rounded bg-ink-100 px-1">{"{cliente}"}</code>{" "}
+                <code className="rounded bg-ink-100 px-1">{"{servico}"}</code>{" "}
+                <code className="rounded bg-ink-100 px-1">{"{hora}"}</code>{" "}
+                <code className="rounded bg-ink-100 px-1">{"{data}"}</code>{" "}
+                <code className="rounded bg-ink-100 px-1">{"{salao}"}</code>. Deixa em branco para usar
+                o template por defeito.
+              </p>
             </Field>
           </Section>
 
